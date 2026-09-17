@@ -1,0 +1,108 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ── Helpers ────────────────────────────────────────────────────────────
+    function isSignedIn() {
+      return request.auth != null;
+    }
+    function myEmail() {
+      return request.auth.token.email;
+    }
+    function isOwner(farmId) {
+      return isSignedIn() &&
+        get(/databases/$(database)/documents/farms/$(farmId)).data.ownerId == request.auth.uid;
+    }
+    function membership(farmId) {
+      return get(/databases/$(database)/documents/farmMemberships/$(farmId + '__' + myEmail()));
+    }
+    function isMember(farmId) {
+      return isSignedIn() &&
+        exists(/databases/$(database)/documents/farmMemberships/$(farmId + '__' + myEmail()));
+    }
+    // owner always has every permission; a member needs the specific flag set true
+    function hasPerm(farmId, feature) {
+      return isOwner(farmId) ||
+        (isMember(farmId) && membership(farmId).data.permissions[feature] == true);
+    }
+    // collaborative, low-risk areas: any accepted member can use these regardless of feature flags
+    function isOwnerOrMember(farmId) {
+      return isOwner(farmId) || isMember(farmId);
+    }
+
+    // ── Farms ──────────────────────────────────────────────────────────────
+    match /farms/{farmId} {
+      allow create: if isSignedIn() && request.resource.data.ownerId == request.auth.uid;
+      allow read: if isOwnerOrMember(farmId);
+      allow update, delete: if isOwner(farmId);
+
+      match /projects/{docId} {
+        allow read: if isOwnerOrMember(farmId);
+        allow write: if hasPerm(farmId, 'projects');
+      }
+      match /entries/{docId} {
+        allow read: if isOwnerOrMember(farmId);
+        allow write: if hasPerm(farmId, 'entries');
+      }
+      match /vaccines/{docId} {
+        allow read: if isOwnerOrMember(farmId);
+        allow write: if hasPerm(farmId, 'vaccine');
+      }
+      match /birdLogs/{docId} {
+        allow read: if isOwnerOrMember(farmId);
+        allow write: if hasPerm(farmId, 'birds');
+      }
+      match /healthLogs/{docId} {
+        allow read: if isOwnerOrMember(farmId);
+        allow write: if hasPerm(farmId, 'birds');
+      }
+      match /feedLogs/{docId} {
+        allow read: if isOwnerOrMember(farmId);
+        allow write: if hasPerm(farmId, 'feed');
+      }
+      match /dues/{docId} {
+        allow read: if isOwnerOrMember(farmId);
+        allow write: if hasPerm(farmId, 'dues');
+      }
+      // সাপ্লায়ার/ক্রেতা প্রোফাইল — লেনদেনের সাথে সম্পর্কিত, তাই 'entries' পারমিশনে গেট করা
+      match /contacts/{docId} {
+        allow read: if isOwnerOrMember(farmId);
+        allow write: if hasPerm(farmId, 'entries');
+      }
+      // notes/tasks — collaborative organisational tools, open to any accepted member
+      match /notes/{docId} {
+        allow read, write: if isOwnerOrMember(farmId);
+      }
+      match /tasks/{docId} {
+        allow read, write: if isOwnerOrMember(farmId);
+      }
+      match /meta/{docId} {
+        allow read: if isOwnerOrMember(farmId);
+        // settings doc (categories, autoBackup flag etc.) — owner only
+        allow write: if isOwner(farmId);
+      }
+      // team accountability log — any accepted member can write (as a byproduct of their actions),
+      // but only the farm owner can read it back
+      match /activityLog/{docId} {
+        allow create: if isOwnerOrMember(farmId);
+        allow read: if isOwner(farmId);
+        allow update, delete: if false;
+      }
+    }
+
+    // ── Farm memberships (admin invites) ──────────────────────────────────
+    // doc id convention: {farmId}__{memberEmail}
+    match /farmMemberships/{membershipId} {
+      // a member can read their OWN membership doc; a farm owner can read all memberships for their farm
+      allow read: if isSignedIn() &&
+        (resource.data.email == myEmail() || isOwner(resource.data.farmId));
+      // only the farm owner may create/update/delete a membership for their farm
+      allow create: if isSignedIn() &&
+        request.resource.data.farmId is string &&
+        get(/databases/$(database)/documents/farms/$(request.resource.data.farmId)).data.ownerId == request.auth.uid &&
+        membershipId == request.resource.data.farmId + '__' + request.resource.data.email;
+      allow update, delete: if isSignedIn() &&
+        get(/databases/$(database)/documents/farms/$(resource.data.farmId)).data.ownerId == request.auth.uid;
+    }
+  }
+}

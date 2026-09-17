@@ -1,0 +1,3252 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>পোল্ট্রি ট্র্যাকার</title>
+<link rel="manifest" href="manifest.json"/>
+<meta name="theme-color" content="#7c3aed"/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+<meta name="apple-mobile-web-app-title" content="পোল্ট্রি"/>
+<link rel="apple-touch-icon" href="icon-192.png"/>
+<link rel="icon" href="icon-192.png"/>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.44.0/tabler-icons.min.css"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#f8fafc;--card:#fff;--border:#e2e8f0;--text:#0f172a;--muted:#64748b;
+  --green:#10b981;--red:#ef4444;--blue:#3b82f6;--purple:#8b5cf6;--orange:#f59e0b;
+  --green-bg:#d1fae5;--green-text:#065f46;
+  --red-bg:#fee2e2;--red-text:#991b1b;
+  --purple-bg:#ede9fe;--purple-text:#5b21b6;
+  --orange-bg:#fef3c7;--orange-text:#92400e;
+  --nav-h:62px;
+}
+body.dark{
+  --bg:#0f172a;--card:#1e293b;--border:#334155;--text:#f1f5f9;--muted:#94a3b8;
+  --green-bg:#064e3b;--green-text:#6ee7b7;
+  --red-bg:#450a0a;--red-text:#fca5a5;
+  --purple-bg:#2e1065;--purple-text:#c4b5fd;
+  --orange-bg:#451a03;--orange-text:#fcd34d;
+}
+body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(--text);font-size:14px;min-height:100vh;transition:background .2s,color .2s}
+.app{max-width:500px;margin:0 auto;background:var(--bg);min-height:100vh;display:flex;flex-direction:column}
+.topbar{background:var(--card);border-bottom:1px solid var(--border);padding:14px 16px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:50;transition:background .2s,border-color .2s}
+.topbar-left h1{font-size:18px;font-weight:600;display:flex;align-items:center;gap:8px}
+.topbar-left p{font-size:12px;color:var(--muted);margin-top:2px}
+.topbar-right{display:flex;gap:8px}
+.nav{background:var(--card);border-top:1px solid var(--border);display:flex;position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:500px;z-index:50;transition:background .2s,border-color .2s}
+.nav-btn{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;padding:10px 4px 8px;border:none;background:none;cursor:pointer;color:var(--muted);font-size:10px;font-family:inherit;transition:color .15s}
+.nav-btn i{font-size:20px}
+.nav-btn.active{color:var(--green)}
+.content{flex:1;overflow-y:auto;padding:14px 14px 80px}
+.page{display:none}.page.active{display:block}
+.card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px 16px;margin-bottom:12px;transition:background .2s,border-color .2s}
+.section-label{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-bottom:10px}
+.strip{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px;margin-bottom:14px;display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;text-align:center;transition:background .2s,border-color .2s}
+.strip-label{font-size:11px;color:var(--muted);margin-bottom:4px}
+.strip-val{font-size:17px;font-weight:600}
+.green{color:var(--green)}.red{color:var(--red)}.blue{color:var(--blue)}.purple{color:var(--purple)}.orange{color:var(--orange)}
+.proj-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px}
+.proj-card{background:var(--card);border:1.5px solid var(--border);border-radius:14px;padding:14px;cursor:pointer;transition:border-color .15s,box-shadow .15s}
+.proj-card:hover{border-color:var(--green);box-shadow:0 2px 12px rgba(16,185,129,.12)}
+.proj-icon{font-size:28px;margin-bottom:8px}
+.proj-name{font-size:13px;font-weight:600;margin-bottom:2px}
+.proj-sub{font-size:11px;color:var(--muted)}
+.proj-profit{font-size:15px;font-weight:600;margin-top:8px}
+.btn{padding:8px 14px;border-radius:10px;border:1px solid var(--border);background:var(--card);color:var(--text);cursor:pointer;font-size:13px;font-family:inherit;transition:background .15s;display:inline-flex;align-items:center;gap:6px}
+.btn:hover{background:#f1f5f9}
+body.dark .btn:hover{background:#334155}
+.btn-primary{background:var(--green);color:#fff;border-color:var(--green)}
+.btn-primary:hover{background:#0d9e70}
+.btn-danger{color:var(--red);border-color:#fca5a5}
+.btn-danger:hover{background:var(--red-bg)}
+.btn-purple{background:var(--purple);color:#fff;border-color:var(--purple)}
+.btn-purple:hover{background:#7c3aed}
+.btn-blue{background:var(--blue);color:#fff;border-color:var(--blue)}
+.btn-blue:hover{background:#2563eb}
+.btn-full{width:100%;justify-content:center;padding:12px}
+.btn-sm{padding:7px 11px;font-size:12px;border-radius:8px}
+.btn-icon{padding:8px;border-radius:10px}
+label{font-size:12px;color:var(--muted);display:block;margin-bottom:4px}
+input,select,textarea{width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:10px;background:var(--bg);color:var(--text);font-size:14px;font-family:inherit;outline:none;transition:border-color .15s,background .2s}
+input:focus,select:focus,textarea:focus{border-color:var(--green);background:var(--card)}
+textarea{resize:vertical}
+.fg{margin-bottom:12px}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}
+.metrics{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px}
+.metrics-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:12px}
+.metrics-4{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:12px}
+.metric{background:var(--bg);border-radius:10px;padding:10px;text-align:center}
+.metric-label{font-size:11px;color:var(--muted);margin-bottom:4px}
+.metric-val{font-size:15px;font-weight:600}
+.entry-item{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid #f1f5f9}
+body.dark .entry-item{border-bottom-color:#1e293b}
+.entry-item:last-child{border-bottom:none}
+.entry-dot{width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:14px;font-weight:700}
+.dot-green{background:var(--green-bg);color:var(--green-text)}
+.dot-red{background:var(--red-bg);color:var(--red-text)}
+.dot-purple{background:var(--purple-bg);color:var(--purple-text)}
+.dot-orange{background:var(--orange-bg);color:var(--orange-text)}
+.entry-info{flex:1;min-width:0}
+.entry-name{font-size:13px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.entry-meta{font-size:11px;color:var(--muted);margin-top:1px}
+.entry-amt{font-size:14px;font-weight:600;flex-shrink:0}
+.entry-actions{display:flex;gap:4px;flex-shrink:0}
+.entry-del,.entry-edit{background:none;border:none;cursor:pointer;color:#94a3b8;padding:4px;border-radius:6px}
+.entry-del:hover{color:var(--red);background:var(--red-bg)}
+.entry-edit:hover{color:var(--blue);background:#dbeafe}
+.filter-tabs{display:flex;gap:6px;margin-bottom:14px;flex-wrap:wrap}
+.ftab{padding:6px 14px;border-radius:50px;border:1px solid var(--border);background:none;cursor:pointer;font-size:12px;color:var(--muted);font-family:inherit}
+.ftab.active{background:var(--green);color:#fff;border-color:var(--green)}
+.ftab-inc.active{background:var(--green);border-color:var(--green)}
+.ftab-exp.active{background:var(--red);border-color:var(--red)}
+.badge{display:inline-flex;align-items:center;padding:3px 9px;border-radius:50px;font-size:11px;font-weight:500}
+.badge-green{background:var(--green-bg);color:var(--green-text)}
+.badge-red{background:var(--red-bg);color:var(--red-text)}
+.badge-gray{background:#f1f5f9;color:#475569}
+body.dark .badge-gray{background:#334155;color:#94a3b8}
+.badge-purple{background:var(--purple-bg);color:var(--purple-text)}
+.badge-orange{background:var(--orange-bg);color:var(--orange-text)}
+.stbl{width:100%;border-collapse:collapse;font-size:13px}
+.stbl th{text-align:left;padding:7px 8px;border-bottom:1px solid var(--border);font-size:11px;text-transform:uppercase;color:var(--muted);font-weight:600}
+.stbl td{padding:8px;border-bottom:1px solid #f1f5f9}
+body.dark .stbl td{border-bottom-color:#334155}
+.stbl tr:last-child td{border-bottom:none}
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:200;display:flex;align-items:flex-end;justify-content:center}
+.modal-box{background:var(--card);border-radius:20px 20px 0 0;padding:20px 16px 36px;width:100%;max-width:500px;max-height:92vh;overflow-y:auto;transition:background .2s}
+.modal-title{font-size:16px;font-weight:600;margin-bottom:16px;display:flex;justify-content:space-between;align-items:center}
+.color-opts{display:flex;gap:8px;flex-wrap:wrap;margin-top:6px}
+.color-opt{width:30px;height:30px;border-radius:50%;cursor:pointer;border:3px solid transparent;transition:border-color .1s}
+.color-opt.sel{border-color:#1e293b}
+.cat-chip{display:inline-flex;align-items:center;gap:4px;background:#f1f5f9;border:1px solid var(--border);border-radius:50px;padding:4px 10px;font-size:12px;margin:3px}
+body.dark .cat-chip{background:#334155}
+.cat-del{background:none;border:none;cursor:pointer;color:var(--muted);font-size:14px;line-height:1}
+.divider{border:none;border-top:1px solid var(--border);margin:12px 0}
+.empty{text-align:center;padding:32px 16px;color:var(--muted)}
+.empty i{font-size:36px;display:block;margin-bottom:8px}
+.hidden{display:none!important}
+.cost-row-grid{display:grid;grid-template-columns:1fr 1fr 80px 36px;gap:6px;align-items:flex-end;margin-bottom:8px}
+.pct-pill{display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:50px;font-size:11px;font-weight:600}
+.pct-high{background:#d1fae5;color:#065f46}
+.pct-mid{background:#fef3c7;color:#92400e}
+.pct-low{background:#fee2e2;color:#991b1b}
+.vacc-item{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid #f1f5f9}
+body.dark .vacc-item{border-bottom-color:#334155}
+.vacc-item:last-child{border-bottom:none}
+.vacc-dot{width:30px;height:30px;border-radius:50%;background:var(--purple-bg);color:var(--purple-text);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:15px}
+.vacc-info{flex:1;min-width:0}
+.vacc-name{font-size:13px;font-weight:500}
+.vacc-meta{font-size:11px;color:var(--muted);margin-top:1px}
+.vacc-next{font-size:11px;margin-top:2px}
+.next-soon{color:var(--orange);font-weight:600}
+.next-due{color:var(--red);font-weight:600}
+.next-ok{color:var(--green)}
+.pct-bar-wrap{margin-top:4px}
+.pct-bar-bg{background:#e2e8f0;border-radius:50px;height:6px;overflow:hidden}
+body.dark .pct-bar-bg{background:#334155}
+.pct-bar-fill{height:100%;border-radius:50px;transition:width .5s}
+/* entry type toggle */
+.type-toggle{display:flex;background:var(--bg);border-radius:12px;padding:3px;gap:3px;margin-bottom:16px}
+.stepper{display:flex;align-items:center;border:1.5px solid var(--border);border-radius:10px;overflow:hidden}
+.stepper-btn{width:46px;height:46px;border:none;background:var(--bg);color:var(--text);font-size:20px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.stepper-btn:active{background:var(--purple);color:#fff}
+.stepper-input{flex:1;min-width:0;border:none;text-align:center;font-size:17px;font-weight:700;background:var(--card);color:var(--text);height:46px}
+.stepper-input::-webkit-outer-spin-button,.stepper-input::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
+.type-btn{flex:1;padding:9px;border:none;background:none;border-radius:9px;cursor:pointer;font-size:13px;font-family:inherit;font-weight:500;color:var(--muted);transition:all .15s;display:flex;align-items:center;justify-content:center;gap:6px}
+.type-btn.active-inc{background:var(--green);color:#fff;box-shadow:0 2px 8px rgba(16,185,129,.3)}
+.type-btn.active-exp{background:var(--red);color:#fff;box-shadow:0 2px 8px rgba(239,68,68,.3)}
+/* source select */
+.source-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:6px}
+.source-opt{padding:9px 10px;border:1.5px solid var(--border);border-radius:10px;cursor:pointer;font-size:12px;text-align:center;font-family:inherit;background:var(--card);color:var(--text);transition:all .15s}
+.source-opt:hover{border-color:var(--green)}
+.source-opt.sel-inc{border-color:var(--green);background:var(--green-bg);color:var(--green-text);font-weight:600}
+.source-opt.sel-exp{border-color:var(--red);background:var(--red-bg);color:var(--red-text);font-weight:600}
+/* settings toggle */
+.toggle-row{display:flex;align-items:center;justify-content:space-between;padding:12px 0;border-bottom:1px solid var(--border)}
+.toggle-row:last-child{border-bottom:none}
+.toggle{position:relative;width:44px;height:24px}
+.toggle input{opacity:0;width:0;height:0}
+.toggle-slider{position:absolute;inset:0;background:#cbd5e1;border-radius:50px;cursor:pointer;transition:.3s}
+.toggle-slider:before{content:'';position:absolute;width:18px;height:18px;left:3px;bottom:3px;background:#fff;border-radius:50%;transition:.3s}
+.toggle input:checked+.toggle-slider{background:var(--green)}
+.toggle input:checked+.toggle-slider:before{transform:translateX(20px)}
+/* lang pills */
+.lang-pill{padding:7px 16px;border:1.5px solid var(--border);border-radius:50px;cursor:pointer;font-size:13px;font-family:inherit;background:var(--card);color:var(--muted);transition:all .15s}
+.lang-pill.active{border-color:var(--green);color:var(--green);font-weight:600;background:var(--green-bg)}
+/* profile page */
+.profile-section{margin-bottom:16px}
+.note-item{background:var(--bg);border-radius:10px;padding:10px 12px;margin-bottom:8px;border-left:3px solid var(--orange);position:relative}
+.note-text{font-size:13px;line-height:1.5}
+.note-date{font-size:11px;color:var(--muted);margin-top:4px}
+.note-del{position:absolute;top:8px;right:8px;background:none;border:none;cursor:pointer;color:#94a3b8;font-size:12px;padding:2px}
+.note-del:hover{color:var(--red)}
+/* calendar */
+.cal-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:2px;text-align:center}
+.cal-day-label{font-size:10px;color:var(--muted);padding:4px 0;font-weight:600}
+.cal-day{padding:6px 2px;font-size:12px;border-radius:8px;cursor:pointer;position:relative}
+.cal-day:hover{background:var(--green-bg)}
+.cal-day.today{background:var(--green);color:#fff;font-weight:700}
+.cal-day.has-entry::after{content:'';position:absolute;bottom:2px;left:50%;transform:translateX(-50%);width:4px;height:4px;border-radius:50%;background:var(--orange)}
+.cal-day.today::after{background:#fff}
+.cal-day.other-month{color:#cbd5e1}
+/* tasks */
+.task-item{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border)}
+.task-item:last-child{border-bottom:none}
+.task-check{width:20px;height:20px;border:2px solid var(--border);border-radius:6px;cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center;transition:all .15s}
+.task-check.done{background:var(--green);border-color:var(--green);color:#fff}
+.task-text{flex:1;font-size:13px}
+.task-text.done{text-decoration:line-through;color:var(--muted)}
+/* backup banner */
+.backup-banner{background:linear-gradient(135deg,#3b82f6,#8b5cf6);border-radius:14px;padding:14px 16px;margin-bottom:12px;color:#fff}
+.backup-title{font-weight:700;font-size:15px;margin-bottom:4px}
+.backup-sub{font-size:12px;opacity:.85;margin-bottom:12px}
+/* nav badge */
+.nav-btn{position:relative}
+.nav-badge{position:absolute;top:4px;right:22%;background:var(--red);color:#fff;font-size:9px;font-weight:700;min-width:15px;height:15px;border-radius:50px;display:flex;align-items:center;justify-content:center;padding:0 3px;line-height:1;box-shadow:0 0 0 2px var(--card)}
+/* egg sale sub-fields inside entry modal */
+.egg-sale-box{background:var(--green-bg);border-radius:12px;padding:12px;margin-bottom:12px}
+.egg-sale-box .fg label{color:var(--green-text)}
+/* transaction row: label + amount combined nicely */
+.entry-primary{display:flex;align-items:baseline;justify-content:space-between;gap:8px}
+.entry-primary .entry-name{font-size:13.5px;font-weight:600}
+.entry-primary .entry-amt{font-size:14.5px}
+/* vaccine project grid */
+.vproj-card{background:var(--card);border:1.5px solid var(--border);border-radius:14px;padding:14px;cursor:pointer;transition:border-color .15s,box-shadow .15s;position:relative}
+.vproj-card:hover{border-color:var(--purple);box-shadow:0 2px 12px rgba(139,92,246,.12)}
+.vproj-card .proj-icon{font-size:26px;margin-bottom:6px}
+.vproj-card .proj-name{font-size:13px;font-weight:600;margin-bottom:2px}
+.vproj-card .proj-sub{font-size:11px;color:var(--muted)}
+.vproj-alert-dot{position:absolute;top:10px;right:10px;width:10px;height:10px;border-radius:50%}
+/* home egg-rate card */
+.egg-rate-card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px 16px;margin-bottom:14px}
+/* notification banner */
+.notif-banner{border-radius:14px;padding:12px 14px;margin-bottom:12px;border:1px solid}
+.notif-overdue{background:var(--red-bg);border-color:#fca5a5}
+.notif-upcoming{background:var(--orange-bg);border-color:#fed7aa}
+/* note edit textarea inline */
+.note-edit-hint{font-size:11px;color:var(--purple);margin-bottom:6px;display:flex;align-items:center;gap:4px}
+.boot-screen{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px;background:var(--bg)}
+.boot-card{max-width:380px;width:100%;text-align:center}
+.google-btn{display:flex;align-items:center;justify-content:center;gap:10px;width:100%;padding:12px;border-radius:10px;border:1.5px solid var(--border);background:var(--card);color:var(--text);font-size:14px;font-weight:600;cursor:pointer;font-family:inherit}
+.google-btn:hover{border-color:var(--blue)}
+.perm-chip{display:flex;align-items:center;gap:5px;font-size:12px;background:var(--bg);padding:6px 10px;border-radius:8px;border:1px solid var(--border)}
+</style>
+</head>
+<body>
+
+<!-- BOOT / AUTH GATE -->
+<div id="bootScreen" class="boot-screen">
+  <div class="boot-card"><div style="font-size:44px;margin-bottom:14px">🐔</div>
+  <div style="font-size:14px;color:var(--muted)">লোড হচ্ছে...</div></div>
+</div>
+
+<div id="appRoot" class="app hidden">
+
+<div class="topbar">
+  <div class="topbar-left">
+    <h1>🐣 <span id="appTitle">পোল্ট্রি ট্র্যাকার</span></h1>
+    <p id="topDate"></p>
+  </div>
+  <div class="topbar-right">
+    <button class="btn btn-primary btn-sm" data-perm="entries" onclick="openModal('addEntry')"><i class="ti ti-plus"></i> <span data-t="transaction">লেনদেন</span></button>
+    <button class="btn btn-icon btn-sm" onclick="showNav('settings')"><i class="ti ti-settings"></i></button>
+  </div>
+</div>
+
+<div class="content">
+
+  <!-- HOME -->
+  <div id="page-home" class="page active">
+    <div id="currentProjectBar"></div>
+    <div id="homeVaccAlert"></div>
+    <div class="section-label">আজকের হিসাব</div>
+    <div class="strip" style="margin-bottom:8px">
+      <div><div class="strip-label">আজকের আয়</div><div class="strip-val green" id="hTodayInc">০ ৳</div></div>
+      <div><div class="strip-label">আজকের খরচ</div><div class="strip-val red" id="hTodayExp">০ ৳</div></div>
+      <div><div class="strip-label">আজকের লাভ</div><div class="strip-val" id="hTodayProfit">০ ৳</div></div>
+    </div>
+    <div class="strip">
+      <div><div class="strip-label" data-t="totalIncome">মোট আয়</div><div class="strip-val green" id="hInc">০ ৳</div></div>
+      <div><div class="strip-label" data-t="totalExpense">মোট খরচ</div><div class="strip-val red" id="hExp">০ ৳</div></div>
+      <div><div class="strip-label" data-t="netProfit">নীট লাভ</div><div class="strip-val" id="hProfit">০ ৳</div></div>
+    </div>
+    <div class="metrics-4" style="margin-top:10px">
+      <div class="metric"><div class="metric-label">মোট পাখি</div><div class="metric-val" id="hBirds">০</div></div>
+      <div class="metric"><div class="metric-label">মৃত্যুহার</div><div class="metric-val" id="hMort">—</div></div>
+      <div class="metric"><div class="metric-label">ফিড খরচ (মাস)</div><div class="metric-val red" id="hFeedCost">০ ৳</div></div>
+      <div class="metric"><div class="metric-label">পাখি/দিন খরচ</div><div class="metric-val" id="hPerBirdCost">—</div></div>
+    </div>
+    <div class="metrics" style="margin-top:-4px">
+      <div class="metric"><div class="metric-label">🥚 প্রতি ডিমের খরচ</div><div class="metric-val" id="hCostPerEgg">—</div></div>
+      <div class="metric"><div class="metric-label">🌾 ফিড/১০০ ডিম</div><div class="metric-val" id="hFeedPer100">—</div></div>
+    </div>
+    <div id="homeEggRate"></div>
+    <div id="homeCharts"></div>
+    <div class="section-label" style="margin-top:4px">কুইক অ্যাকশন</div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px">
+      <button class="btn btn-sm" onclick="showNav('profile');switchProfileTab('birds',document.getElementById('ptab-birds'))"><i class="ti ti-feather"></i> পাখি লগ</button>
+      <button class="btn btn-sm" data-perm="birds" style="border-color:var(--orange);color:var(--orange)" onclick="openModal('addHealthLog')"><i class="ti ti-stethoscope"></i> অসুস্থতা</button>
+      <button class="btn btn-sm" onclick="showNav('profile');switchProfileTab('feed',document.getElementById('ptab-feed'))"><i class="ti ti-wheat"></i> ফিড লগ</button>
+      <button class="btn btn-sm" onclick="showNav('profile');switchProfileTab('dues',document.getElementById('ptab-dues'))"><i class="ti ti-cash"></i> পাওনা-দেনা</button>
+    </div>
+    <div class="divider"></div>
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+      <div class="section-label" style="margin-bottom:0" data-t="recentTx">সাম্প্রতিক লেনদেন</div>
+    </div>
+    <div class="filter-tabs" style="margin-bottom:10px">
+      <button class="ftab active" onclick="setHomeFilter('all',this)" data-t="all">সব</button>
+      <button class="ftab" onclick="setHomeFilter('income',this)" data-t="income">আয়</button>
+      <button class="ftab" onclick="setHomeFilter('expense',this)" data-t="expense">খরচ</button>
+    </div>
+    <div id="recentList"></div>
+  </div>
+
+  <!-- DAILY -->
+  <div id="page-daily" class="page">
+    <div class="card">
+      <div class="fg" id="dailyProjWrap"></div>
+      <select id="dailyProjSel" class="hidden"></select>
+      <div class="row2">
+        <div class="fg"><label data-t="date">তারিখ</label><input type="date" id="dailyDate"></div>
+        <div class="fg" style="display:flex;align-items:flex-end"><button class="btn btn-sm" onclick="setTodayDate('dailyDate')" data-t="today">আজ</button></div>
+      </div>
+    </div>
+    <div id="dailyFormBody"></div>
+    <div id="dailyPreviewCard" class="card hidden">
+      <div class="section-label" data-t="preview">প্রিভিউ</div>
+      <div id="dailyPreviewMetrics"></div>
+    </div>
+    <button class="btn btn-primary btn-full" onclick="saveDailyEntry()"><i class="ti ti-device-floppy"></i> <span data-t="save">সেভ করুন</span></button>
+  </div>
+
+  <!-- SUMMARY -->
+  <div id="page-summary" class="page">
+    <div class="card">
+      <div id="sumProjWrap" style="margin-bottom:10px"></div>
+      <select id="sumProjSel" class="hidden"></select>
+      <div class="filter-tabs" id="sumPeriodTabs" style="margin-bottom:10px">
+        <button class="ftab" onclick="setSummaryPeriod('today',this)">আজ</button>
+        <button class="ftab" onclick="setSummaryPeriod('week',this)">এই সপ্তাহ</button>
+        <button class="ftab active" onclick="setSummaryPeriod('month',this)">নির্বাচিত মাস</button>
+        <button class="ftab" onclick="setSummaryPeriod('all',this)">সব সময়</button>
+      </div>
+      <div class="fg" style="margin-bottom:0" id="sumMonthWrap"><label data-t="month">মাস</label><select id="sumMonthSel"><option value="" data-t="allMonths">সব মাস</option></select></div>
+    </div>
+    <div id="summaryBody"></div>
+    <div class="card">
+      <div class="section-label" data-t="fullReport">সম্পূর্ণ রিপোর্ট</div>
+      <div style="font-size:12px;color:var(--muted);margin-bottom:10px">সকল প্রজেক্ট ও মাস অনুযায়ী বিস্তারিত আয়-ব্যয়ের প্রতিবেদন ডাউনলোড করুন</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn btn-primary btn-sm" onclick="downloadFullReport('pdf')"><i class="ti ti-file-type-pdf"></i> PDF ডাউনলোড</button>
+        <button class="btn btn-sm" onclick="downloadFullReport('jpg')"><i class="ti ti-photo"></i> JPG ডাউনলোড</button>
+        <button class="btn btn-sm" onclick="downloadCSV()"><i class="ti ti-file-spreadsheet"></i> CSV এক্সপোর্ট</button>
+      </div>
+      <div id="reportGenStatus" style="font-size:11px;color:var(--muted);margin-top:8px"></div>
+    </div>
+  </div>
+
+  <!-- VACCINE -->
+  <div id="page-vaccine" class="page">
+    <div class="card" style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px">
+      <div>
+        <div style="font-weight:600;font-size:15px">💉 <span data-t="vaccineTracker">ভ্যাকসিন ট্র্যাকার</span></div>
+        <div style="font-size:12px;color:var(--muted);margin-top:2px" data-t="vaccSub">পাখির টিকার রেকর্ড ও সময়সূচি</div>
+      </div>
+      <button class="btn btn-purple btn-sm" data-perm="vaccine" onclick="openModal('addVaccine')"><i class="ti ti-plus"></i> <span data-t="add">যোগ</span></button>
+    </div>
+    <div id="vaccUpcoming" style="margin-bottom:4px"></div>
+    <div id="vaccScheduleWrap"></div>
+    <div id="vaccActiveProjWrap"></div>
+    <div id="vaccNoProjWrap"></div>
+  </div>
+
+  <!-- SETTINGS -->
+  <div id="page-settings" class="page">
+    <div class="card">
+      <div class="section-label" data-t="appearance">চেহারা ও ভাষা</div>
+      <div class="toggle-row">
+        <div>
+          <div style="font-size:13px;font-weight:500" data-t="autoTheme">সিস্টেম অনুযায়ী (Auto)</div>
+          <div style="font-size:11px;color:var(--muted)" data-t="autoThemeDesc">মোবাইলের সেটিং অনুযায়ী নিজে থেকে পরিবর্তন হবে</div>
+        </div>
+        <label class="toggle"><input type="checkbox" id="autoThemeToggle" onchange="toggleAutoTheme(this.checked)"><span class="toggle-slider"></span></label>
+      </div>
+      <div class="toggle-row">
+        <div>
+          <div style="font-size:13px;font-weight:500" data-t="darkMode">ডার্ক মোড</div>
+          <div style="font-size:11px;color:var(--muted)" data-t="darkModeDesc">চোখের আরামের জন্য</div>
+        </div>
+        <label class="toggle"><input type="checkbox" id="darkToggle" onchange="toggleDark(this.checked)"><span class="toggle-slider"></span></label>
+      </div>
+      <div style="margin-top:12px">
+        <label style="margin-bottom:8px;display:block" data-t="language">ভাষা / Language</label>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <button class="lang-pill active" onclick="setLang('bn',this)">বাংলা</button>
+          <button class="lang-pill" onclick="setLang('en',this)">English</button>
+        </div>
+      </div>
+    </div>
+    <div class="section-label" data-t="expenseCategories">খরচের ক্যাটাগরি</div>
+    <div id="catChips" style="margin-bottom:10px"></div>
+    <div style="display:flex;gap:8px">
+      <input type="text" id="newCatInp" placeholder="নতুন ক্যাটাগরি..." style="max-width:200px">
+      <button class="btn btn-primary btn-sm" onclick="addCat()"><i class="ti ti-plus"></i> <span data-t="add">যোগ</span></button>
+    </div>
+    <div class="divider"></div>
+    <div class="backup-banner">
+      <div class="backup-title">☁️ ক্লাউড সিঙ্ক চালু আছে</div>
+      <div class="backup-sub">আপনার সব ডেটা স্বয়ংক্রিয়ভাবে ক্লাউডে সেভ হয়। অফলাইনে কিছু আপডেট করলে ইন্টারনেট এলে সেটা নিজে থেকেই সিঙ্ক হয়ে যাবে — আলাদা করে ব্যাকআপ রাখার দরকার নেই।</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn btn-sm" style="background:rgba(255,255,255,.2);color:#fff;border-color:rgba(255,255,255,.3)" onclick="exportData()"><i class="ti ti-download"></i> JSON কপি Export</button>
+        <button class="btn btn-sm" data-perm-owner="1" style="background:rgba(255,255,255,.2);color:#fff;border-color:rgba(255,255,255,.3)" onclick="document.getElementById('importFile').click()"><i class="ti ti-upload"></i> পুরনো ফাইল Import</button>
+        <input type="file" id="importFile" accept=".json" style="display:none" onchange="importData(event)">
+      </div>
+    </div>
+    <div class="card" id="farmInfoCard"></div>
+    <div class="section-label" data-perm-owner="1">টিম / অ্যাডমিন</div>
+    <div id="teamSection" data-perm-owner="1"></div>
+    <div class="divider"></div>
+    <div class="card">
+      <div class="toggle-row" style="border-bottom:none;padding-bottom:4px">
+        <div>
+          <div style="font-size:13px;font-weight:500">🔔 নোটিফিকেশন</div>
+          <div style="font-size:11px;color:var(--muted)">ভ্যাকসিন, ফিড কম, পাওনা-দেনার সতর্কতা — অ্যাপ খোলা/ব্যাকগ্রাউন্ডে থাকলে দেখাবে</div>
+        </div>
+        <label class="toggle"><input type="checkbox" id="notifToggle" onchange="toggleNotifications(this.checked)"><span class="toggle-slider"></span></label>
+      </div>
+    </div>
+    <div class="section-label" data-perm-owner="1">অ্যাক্টিভিটি লগ (কে কী করলো)</div>
+    <div id="activityLogSection" data-perm-owner="1"></div>
+    <div class="divider"></div>
+    <div class="card">
+      <div style="font-size:12px;color:var(--muted);margin-bottom:8px" id="accountEmailLine"></div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn btn-sm" onclick="showFarmSwitcherModal()"><i class="ti ti-switch-horizontal"></i> ফার্ম পরিবর্তন</button>
+        <button class="btn btn-sm btn-danger" onclick="signOutUser()"><i class="ti ti-logout"></i> লগআউট</button>
+      </div>
+    </div>
+  </div>
+
+
+
+  <!-- PROFILE (Projects, Notes, Calendar, Tasks) -->
+  <div id="page-profile" class="page">
+    <!-- Tabs -->
+    <div class="filter-tabs">
+      <button class="ftab active" id="ptab-projects" onclick="switchProfileTab('projects',this)" data-t="projects">প্রজেক্ট</button>
+      <button class="ftab" id="ptab-birds" onclick="switchProfileTab('birds',this)">🐔 পাখি</button>
+      <button class="ftab" id="ptab-feed" onclick="switchProfileTab('feed',this)">🌾 ফিড</button>
+      <button class="ftab" id="ptab-dues" onclick="switchProfileTab('dues',this)">💵 পাওনা-দেনা</button>
+      <button class="ftab" id="ptab-contacts" onclick="switchProfileTab('contacts',this)">📇 যোগাযোগ</button>
+      <button class="ftab" id="ptab-notes" onclick="switchProfileTab('notes',this)" data-t="notes">নোট</button>
+      <button class="ftab" id="ptab-calendar" onclick="switchProfileTab('calendar',this)" data-t="calendar">ক্যালেন্ডার</button>
+      <button class="ftab" id="ptab-tasks" onclick="switchProfileTab('tasks',this)" data-t="tasks">কাজ</button>
+    </div>
+
+    <!-- Projects sub-page -->
+    <div id="psub-projects">
+      <div class="section-label" data-t="activeProjects">চলমান প্রজেক্ট</div>
+      <div id="profileProjList"></div>
+      <button class="btn btn-full btn-primary" data-perm="projects" onclick="openModal('addProject')"><i class="ti ti-plus"></i> <span data-t="newProject">নতুন প্রজেক্ট</span></button>
+    </div>
+
+    <!-- Birds sub-page -->
+    <div id="psub-birds" class="hidden">
+      <div id="birdSummaryWrap"></div>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+        <div class="section-label" style="margin-bottom:0">পাখি ও অসুস্থতা লগ</div>
+        <div style="display:flex;gap:6px">
+          <button class="btn btn-primary btn-sm" data-perm="birds" onclick="openModal('addBirdLog')"><i class="ti ti-plus"></i> পাখি</button>
+          <button class="btn btn-sm" data-perm="birds" style="border-color:var(--orange);color:var(--orange)" onclick="openModal('addHealthLog')"><i class="ti ti-stethoscope"></i> অসুস্থতা</button>
+        </div>
+      </div>
+      <div id="birdLogList"></div>
+      <div class="section-label" style="margin-top:14px">অসুস্থতা রেকর্ড</div>
+      <div id="healthLogList"></div>
+    </div>
+
+    <!-- Feed sub-page -->
+    <div id="psub-feed" class="hidden">
+      <div id="feedSummaryWrap"></div>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+        <div class="section-label" style="margin-bottom:0">ফিড লগ</div>
+        <button class="btn btn-primary btn-sm" data-perm="feed" onclick="openModal('addFeedLog')"><i class="ti ti-plus"></i> এন্ট্রি</button>
+      </div>
+      <div id="feedLogList"></div>
+    </div>
+
+    <!-- Dues sub-page -->
+    <div id="psub-dues" class="hidden">
+      <div id="duesSummaryWrap"></div>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+        <div class="section-label" style="margin-bottom:0">পাওনা ও দেনা</div>
+        <button class="btn btn-primary btn-sm" data-perm="dues" onclick="openModal('addDue')"><i class="ti ti-plus"></i> যোগ</button>
+      </div>
+      <div class="filter-tabs" id="duesFilterTabs">
+        <button class="ftab active" onclick="setDuesFilter('all',this)">সব</button>
+        <button class="ftab" onclick="setDuesFilter('receivable',this)">পাবো</button>
+        <button class="ftab" onclick="setDuesFilter('payable',this)">দিব</button>
+      </div>
+      <div id="duesList"></div>
+    </div>
+
+    <!-- Contacts sub-page -->
+    <div id="psub-contacts" class="hidden">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+        <div class="section-label" style="margin-bottom:0">সাপ্লায়ার ও ক্রেতা</div>
+        <button class="btn btn-primary btn-sm" data-perm="entries" onclick="openModal('addContact')"><i class="ti ti-plus"></i> যোগ</button>
+      </div>
+      <div class="filter-tabs" id="contactsFilterTabs">
+        <button class="ftab active" onclick="setContactsFilter('all',this)">সব</button>
+        <button class="ftab" onclick="setContactsFilter('supplier',this)">সাপ্লায়ার</button>
+        <button class="ftab" onclick="setContactsFilter('buyer',this)">ক্রেতা</button>
+      </div>
+      <div id="contactsList"></div>
+    </div>
+
+    <!-- Notes sub-page -->
+    <div id="psub-notes" class="hidden">
+      <div id="noteEditHint" class="note-edit-hint hidden"><i class="ti ti-pencil"></i> <span data-t="editingNote">নোট সম্পাদনা করা হচ্ছে...</span> <button class="btn btn-sm" style="padding:2px 8px" onclick="cancelEditNote()"><i class="ti ti-x"></i></button></div>
+      <div style="display:flex;gap:8px;margin-bottom:12px">
+        <textarea id="noteInput" rows="3" placeholder="নোট লিখুন..." style="flex:1;border-radius:10px"></textarea>
+        <button class="btn btn-primary btn-sm" id="noteSendBtn" style="align-self:flex-end" onclick="addNote()"><i class="ti ti-send"></i></button>
+      </div>
+      <div id="notesList"></div>
+    </div>
+
+    <!-- Calendar sub-page -->
+    <div id="psub-calendar" class="hidden">
+      <div class="card">
+        <div class="cal-header">
+          <button class="btn btn-icon btn-sm" onclick="calPrev()"><i class="ti ti-chevron-left"></i></button>
+          <div id="calTitle" style="font-weight:600;font-size:15px"></div>
+          <button class="btn btn-icon btn-sm" onclick="calNext()"><i class="ti ti-chevron-right"></i></button>
+        </div>
+        <div class="cal-grid" id="calGrid"></div>
+      </div>
+      <div id="calDayEntries"></div>
+    </div>
+
+    <!-- Tasks sub-page -->
+    <div id="psub-tasks" class="hidden">
+      <div style="display:flex;gap:8px;margin-bottom:12px">
+        <input type="text" id="taskInput" placeholder="নতুন কাজ লিখুন..." style="flex:1">
+        <select id="taskPriority" style="width:90px">
+          <option value="normal">সাধারণ</option>
+          <option value="high">জরুরি</option>
+        </select>
+        <button class="btn btn-primary btn-sm" onclick="addTask()"><i class="ti ti-plus"></i></button>
+      </div>
+      <div class="card" style="padding:6px 14px" id="tasksList"></div>
+    </div>
+  </div>
+
+</div>
+
+<!-- BOTTOM NAV -->
+<div class="nav">
+  <button class="nav-btn active" id="nav-home" onclick="showNav('home')"><i class="ti ti-home"></i><span data-t="home">হোম</span></button>
+  <button class="nav-btn" id="nav-txn" data-perm="entries" onclick="openModal('addEntry')"><i class="ti ti-exchange"></i><span data-t="transaction">লেনদেন</span></button>
+  <button class="nav-btn" id="nav-summary" onclick="showNav('summary')"><i class="ti ti-chart-bar"></i><span data-t="summary">সামারি</span></button>
+  <button class="nav-btn" id="nav-vaccine" onclick="showNav('vaccine')"><i class="ti ti-vaccine"></i><span data-t="vaccine">ভ্যাকসিন</span><span class="nav-badge hidden" id="vaccBadge"></span></button>
+  <button class="nav-btn" id="nav-profile" onclick="showNav('profile')"><i class="ti ti-user"></i><span data-t="profileNav">প্রোফাইল</span></button>
+</div>
+
+<!-- MODAL -->
+<datalist id="buyerNamesList"></datalist>
+<datalist id="supplierNamesList"></datalist>
+<div id="modalOverlay" class="modal-overlay hidden" onclick="closeModal(event)">
+  <div class="modal-box" onclick="event.stopPropagation()">
+    <div id="modalContent"></div>
+  </div>
+</div>
+
+</div>
+
+<script>
+// ── FIREBASE CONFIG ──────────────────────────────────────────────────────────
+// এখানে আপনার Firebase প্রজেক্টের কনফিগ বসান
+// (Firebase Console → ⚙️ Project settings → General → নিচে "Your apps" → Web app → SDK setup and configuration → Config)
+const firebaseConfig = {
+  apiKey: "AIzaSyA371tQZGtXFIDQa_ydMrE0vBr90mefAAQ",
+  authDomain: "egg-farmimg.firebaseapp.com",
+  databaseURL: "https://egg-farmimg-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "egg-farmimg",
+  storageBucket: "egg-farmimg.firebasestorage.app",
+  messagingSenderId: "261351321644",
+  appId: "1:261351321644:web:61812d774eaf4f1932a189",
+  measurementId: "G-RYL3Y7Q7MC"
+};
+firebase.initializeApp(firebaseConfig);
+const auth=firebase.auth();
+const db=firebase.firestore();
+db.enablePersistence({synchronizeTabs:true}).catch(err=>{
+  console.warn('অফলাইন পারসিস্টেন্স চালু করা যায়নি:',err.code);
+});
+
+// ── AUTH + FARM STATE ─────────────────────────────────────────────────────────
+let currentUser=null;
+let currentFarmId=null;
+let currentFarmDoc=null;
+let myRole=null; // 'owner' | 'admin'
+let myPermissions=null; // {projects,entries,vaccine,birds,feed,dues}
+let myFarms=[];
+let unsubscribers=[];
+const PERM_KEYS=['projects','entries','vaccine','birds','feed','dues'];
+const PERM_LABELS={projects:'🗂️ প্রজেক্ট',entries:'💰 আয়-ব্যয় এন্ট্রি',vaccine:'💉 ভ্যাকসিন',birds:'🐔 পাখি ও অসুস্থতা',feed:'🌾 ফিড',dues:'💵 পাওনা-দেনা'};
+const FARM_COLLECTIONS=['projects','entries','vaccines','birdLogs','feedLogs','healthLogs','dues','notes','tasks','contacts'];
+
+function fsCol(name){return db.collection('farms').doc(currentFarmId).collection(name);}
+function fsFarmDoc(){return db.collection('farms').doc(currentFarmId);}
+function can(feature){return myRole==='owner'||!!(myPermissions&&myPermissions[feature]);}
+
+function showBoot(html){
+  document.getElementById('bootScreen').innerHTML=html;
+  document.getElementById('bootScreen').classList.remove('hidden');
+  document.getElementById('appRoot').classList.add('hidden');
+}
+function bootLoading(msg){
+  showBoot(`<div class="boot-card"><div style="font-size:44px;margin-bottom:14px">🐔</div>
+    <div style="font-size:14px;color:var(--muted)">${msg}</div></div>`);
+}
+function bootLoginScreen(){
+  showBoot(`<div class="boot-card">
+    <div style="font-size:52px;margin-bottom:10px">🐔</div>
+    <div style="font-size:20px;font-weight:700;margin-bottom:6px">পোল্ট্রি ট্র্যাকার</div>
+    <div style="font-size:13px;color:var(--muted);margin-bottom:26px">আপনার ফার্মের হিসাব রাখুন — যেকোনো জায়গা থেকে, যেকোনো ডিভাইসে</div>
+    <button class="google-btn" onclick="googleSignIn()">
+      <svg width="18" height="18" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9.1 3.6l6.8-6.8C35.6 2.5 30.1 0 24 0 14.6 0 6.5 5.4 2.5 13.2l7.9 6.1C12.3 13.1 17.6 9.5 24 9.5z"/><path fill="#4285F4" d="M46.5 24.5c0-1.6-.1-3.1-.4-4.5H24v9h12.7c-.5 3-2.2 5.5-4.7 7.2l7.3 5.7C43.8 37.6 46.5 31.6 46.5 24.5z"/><path fill="#FBBC05" d="M10.4 19.3C9.9 20.9 9.6 22.4 9.6 24s.3 3.1.8 4.7l-7.9 6.1C.9 31.6 0 27.9 0 24s.9-7.6 2.5-10.8l7.9 6.1z"/><path fill="#34A853" d="M24 48c6.1 0 11.6-2 15.4-5.5l-7.3-5.7c-2 1.4-4.7 2.2-8.1 2.2-6.4 0-11.7-3.6-13.6-9.8l-7.9 6.1C6.5 42.6 14.6 48 24 48z"/></svg>
+      Google দিয়ে লগইন করুন
+    </button>
+  </div>`);
+}
+function googleSignIn(){
+  const provider=new firebase.auth.GoogleAuthProvider();
+  auth.signInWithPopup(provider).catch(err=>{
+    if(err.code!=='auth/popup-closed-by-user')alert('লগইন ব্যর্থ হয়েছে: '+err.message);
+  });
+}
+function signOutUser(){
+  if(!confirm('লগআউট করবেন?'))return;
+  detachFarmListeners();
+  currentFarmId=null;currentFarmDoc=null;myRole=null;myPermissions=null;
+  auth.signOut();
+}
+
+auth.onAuthStateChanged(user=>{
+  currentUser=user;
+  if(!user){detachFarmListeners();bootLoginScreen();return;}
+  resolveFarms();
+});
+
+async function resolveFarms(){
+  bootLoading('আপনার ফার্ম খোঁজা হচ্ছে...');
+  try{
+    const[ownedSnap,memberSnap]=await Promise.all([
+      db.collection('farms').where('ownerId','==',currentUser.uid).get(),
+      db.collection('farmMemberships').where('email','==',currentUser.email).get()
+    ]);
+    let farms=ownedSnap.docs.map(d=>({id:d.id,...d.data(),role:'owner'}));
+    for(const m of memberSnap.docs){
+      const md=m.data();
+      if(farms.find(f=>f.id===md.farmId))continue;
+      const fd=await db.collection('farms').doc(md.farmId).get();
+      if(fd.exists)farms.push({id:fd.id,...fd.data(),role:'admin',permissions:md.permissions||{}});
+    }
+    myFarms=farms;
+    if(!farms.length){showOnboardingScreen();return;}
+    if(farms.length===1)return selectFarm(farms[0]);
+    const lastId=localStorage.getItem('pltry_lastFarm');
+    const remembered=farms.find(f=>f.id===lastId);
+    if(remembered)return selectFarm(remembered);
+    showInitialFarmPicker();
+  }catch(err){
+    console.error(err);
+    showBoot(`<div class="boot-card"><div style="font-size:44px;margin-bottom:14px">⚠️</div>
+      <div style="font-size:14px;color:var(--red);margin-bottom:14px">ডেটা লোড করতে সমস্যা হয়েছে। ইন্টারনেট সংযোগ চেক করুন।</div>
+      <button class="btn btn-primary" onclick="resolveFarms()">আবার চেষ্টা করুন</button>
+      <button class="btn btn-sm" style="margin-top:8px" onclick="signOutUser()">লগআউট</button></div>`);
+  }
+}
+
+function showOnboardingScreen(){
+  showBoot(`<div class="boot-card">
+    <div style="font-size:48px;margin-bottom:12px">🐔</div>
+    <div style="font-size:18px;font-weight:700;margin-bottom:6px">আপনার ফার্মের নাম দিন</div>
+    <div style="font-size:13px;color:var(--muted);margin-bottom:20px">এটি আপনার নিজস্ব হিসাব-নিকাশের জায়গা হবে</div>
+    <input type="text" id="onboardFarmName" placeholder="যেমন: করিম পোল্ট্রি ফার্ম" style="width:100%;margin-bottom:12px;padding:10px 12px;border-radius:10px;border:1.5px solid var(--border);background:var(--card);color:var(--text);font-size:14px">
+    <button class="btn btn-primary btn-full" onclick="submitOnboardFarm()"><i class="ti ti-plus"></i> ফার্ম তৈরি করুন</button>
+    ${myFarms&&myFarms.length?`<button class="btn btn-sm btn-full" style="margin-top:8px" onclick="showInitialFarmPicker()">ফিরে যান</button>`:''}
+    <button class="btn btn-sm btn-full" style="margin-top:8px" onclick="signOutUser()">লগআউট</button>
+  </div>`);
+}
+async function submitOnboardFarm(){
+  const name=document.getElementById('onboardFarmName').value.trim();
+  if(!name){alert('নাম দিন!');return;}
+  const ref=await db.collection('farms').add({
+    ownerId:currentUser.uid,ownerEmail:currentUser.email,name,icon:'🐔',
+    categories:[...DEFAULT_CATS],createdAt:Date.now()
+  });
+  const farm={id:ref.id,name,icon:'🐔',ownerId:currentUser.uid,ownerEmail:currentUser.email,categories:[...DEFAULT_CATS],role:'owner'};
+  myFarms.push(farm);
+  selectFarm(farm);
+}
+
+function farmRowsHtml(){
+  return myFarms.map(f=>`
+    <div class="card" style="padding:12px 14px;cursor:pointer;text-align:left" onclick="selectFarmById('${f.id}')">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <div><div style="font-weight:600">${f.icon||'🐔'} ${f.name}</div><div style="font-size:11px;color:var(--muted)">${f.role==='owner'?'মালিক':'অ্যাডমিন'}</div></div>
+        ${f.id===currentFarmId?'<i class="ti ti-check" style="color:var(--purple)"></i>':'<i class="ti ti-chevron-left" style="color:var(--muted)"></i>'}
+      </div>
+    </div>`).join('');
+}
+function selectFarmById(fid){const f=myFarms.find(x=>x.id===fid);if(f)selectFarm(f);}
+function showInitialFarmPicker(){
+  showBoot(`<div class="boot-card" style="max-width:400px;text-align:left">
+    <div style="font-size:16px;font-weight:700;margin-bottom:14px;text-align:center">🏠 কোন ফার্মে ঢুকতে চান?</div>
+    ${farmRowsHtml()}
+    <button class="btn btn-sm btn-full" style="margin-top:10px" onclick="showOnboardingScreen()"><i class="ti ti-plus"></i> নতুন ফার্ম যোগ করুন</button>
+    <button class="btn btn-sm btn-full" style="margin-top:8px" onclick="signOutUser()">লগআউট</button>
+  </div>`);
+}
+function showFarmSwitcherModal(){
+  document.getElementById('modalContent').innerHTML=`
+    <div class="modal-title"><span>🏠 ফার্ম পরিবর্তন করুন</span><button class="btn btn-sm" onclick="closeModalDirect()"><i class="ti ti-x"></i></button></div>
+    ${farmRowsHtml()}
+    <button class="btn btn-sm btn-full" style="margin-top:10px" onclick="closeModalDirect();showOnboardingScreen()"><i class="ti ti-plus"></i> নতুন ফার্ম যোগ করুন</button>`;
+  document.getElementById('modalOverlay').classList.remove('hidden');
+}
+
+function selectFarm(farm){
+  currentFarmId=farm.id;
+  currentFarmDoc=farm;
+  myRole=farm.role;
+  myPermissions=farm.role==='owner'?null:(farm.permissions||{});
+  localStorage.setItem('pltry_lastFarm',farm.id);
+  closeModalDirect();
+  attachFarmListeners();
+}
+function detachFarmListeners(){unsubscribers.forEach(u=>u());unsubscribers=[];}
+function ensureActiveProject(){
+  if(!data.projects.length){data.activeProjectId='';return;}
+  if(!data.activeProjectId||!data.projects.find(p=>p.id===data.activeProjectId)){
+    const saved=localStorage.getItem('pltry_activeProj_'+currentFarmId);
+    data.activeProjectId=(saved&&data.projects.find(p=>p.id===saved))?saved:data.projects[0].id;
+  }
+}
+function applyPermissionUI(){
+  document.querySelectorAll('[data-perm]').forEach(el=>{
+    const feat=el.getAttribute('data-perm');
+    el.style.display=can(feat)?'':'none';
+  });
+  document.querySelectorAll('[data-perm-owner]').forEach(el=>{
+    el.style.display=myRole==='owner'?'':'none';
+  });
+}
+function rerenderCurrentPage(){
+  const cur=document.querySelector('.page.active');
+  if(!cur)return;
+  const id=cur.id.replace('page-','');
+  if(id==='home')renderHome();
+  if(id==='vaccine')renderVaccinePage();
+  if(id==='summary')renderSummaryPage();
+  if(id==='profile')renderProfilePage();
+  if(id==='daily')renderDailyPage();
+  if(id==='settings')renderSettingsPage();
+  refreshVaccineBadge();
+  applyPermissionUI();
+  checkAndNotify();
+  updateContactDatalists();
+}
+function updateContactDatalists(){
+  const buyers=data.contacts.filter(c=>c.type==='buyer'||c.type==='both').map(c=>c.name);
+  const suppliers=data.contacts.filter(c=>c.type==='supplier'||c.type==='both').map(c=>c.name);
+  const bl=document.getElementById('buyerNamesList');
+  const sl=document.getElementById('supplierNamesList');
+  if(bl)bl.innerHTML=buyers.map(n=>`<option value="${n}">`).join('');
+  if(sl)sl.innerHTML=suppliers.map(n=>`<option value="${n}">`).join('');
+}
+let _firstSnapshotsPending=FARM_COLLECTIONS.length;
+function attachFarmListeners(){
+  detachFarmListeners();
+  data={projects:[],entries:[],categories:currentFarmDoc.categories||[...DEFAULT_CATS],vaccines:[],notes:[],tasks:[],birdLogs:[],feedLogs:[],healthLogs:[],dues:[],contacts:[],activeProjectId:''};
+  document.getElementById('appTitle').textContent=currentFarmDoc.name||'পোল্ট্রি ট্র্যাকার';
+  FARM_COLLECTIONS.forEach(col=>{
+    const unsub=fsCol(col).onSnapshot(snap=>{
+      data[col]=snap.docs.map(d=>({id:d.id,...d.data()}));
+      if(col==='projects')ensureActiveProject();
+      rerenderCurrentPage();
+    },err=>console.error(col,'sync error',err));
+    unsubscribers.push(unsub);
+  });
+  const unsubFarm=fsFarmDoc().onSnapshot(doc=>{
+    if(!doc.exists)return;
+    const fd=doc.data();
+    data.categories=fd.categories&&fd.categories.length?fd.categories:[...DEFAULT_CATS];
+    currentFarmDoc={...currentFarmDoc,...fd,id:currentFarmId};
+    document.getElementById('appTitle').textContent=currentFarmDoc.name||'পোল্ট্রি ট্র্যাকার';
+    rerenderCurrentPage();
+  });
+  unsubscribers.push(unsubFarm);
+  document.getElementById('bootScreen').classList.add('hidden');
+  document.getElementById('appRoot').classList.remove('hidden');
+  document.getElementById('topDate').textContent=new Date().toLocaleDateString('bn-BD',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
+  loadThemeAndLang();
+  applyTheme();
+  showNav('home');
+  applyPermissionUI();
+}
+
+
+const LANGS={
+  bn:{
+    appTitle:'পোল্ট্রি ট্র্যাকার',transaction:'লেনদেন',totalIncome:'মোট আয়',totalExpense:'মোট খরচ',
+    netProfit:'নীট লাভ',projects:'প্রজেক্টসমূহ',newProject:'নতুন প্রজেক্ট যোগ করুন',
+    recentTx:'সাম্প্রতিক লেনদেন',project:'প্রজেক্ট',date:'তারিখ',today:'আজ',preview:'প্রিভিউ',
+    save:'সেভ করুন',all:'সব',month:'মাস',allMonths:'সব মাস',income:'আয়',expense:'খরচ',
+    vaccineTracker:'ভ্যাকসিন ট্র্যাকার',vaccSub:'পাখির টিকার রেকর্ড ও সময়সূচি',
+    add:'যোগ',projFilter:'প্রজেক্ট ফিল্টার',allProjects:'সব প্রজেক্ট',
+    appearance:'চেহারা ও ভাষা',darkMode:'ডার্ক মোড',darkModeDesc:'চোখের আরামের জন্য',
+    language:'ভাষা / Language',projectMgmt:'প্রজেক্ট ম্যানেজমেন্ট',
+    expenseCategories:'খরচের ক্যাটাগরি',activeProjects:'চলমান প্রজেক্ট',
+    notes:'নোট',calendar:'ক্যালেন্ডার',tasks:'কাজ',profileNav:'প্রোফাইল',
+    home:'হোম',daily:'দৈনিক',history:'ইতিহাস',summary:'সামারি',vaccine:'ভ্যাকসিন',
+    selectProjectVacc:'প্রজেক্ট নির্বাচন করুন',autoTheme:'সিস্টেম অনুযায়ী (Auto)',
+    autoThemeDesc:'মোবাইলের সেটিং অনুযায়ী নিজে থেকে পরিবর্তন হবে',editingNote:'নোট সম্পাদনা করা হচ্ছে...',
+    avgEggRate:'সব প্রজেক্টের গড় ডিম উৎপাদন হার',transaction:'লেনদেন',
+    activeProjectHint:'প্রোফাইল থেকে সক্রিয় প্রজেক্ট পরিবর্তন করুন',
+    noActiveProject:'কোনো প্রজেক্ট সক্রিয় নেই',fullReport:'সম্পূর্ণ রিপোর্ট',
+  },
+  en:{
+    appTitle:'Poultry Tracker',transaction:'Transaction',totalIncome:'Total Income',totalExpense:'Total Expense',
+    netProfit:'Net Profit',projects:'Projects',newProject:'Add New Project',
+    recentTx:'Recent Transactions',project:'Project',date:'Date',today:'Today',preview:'Preview',
+    save:'Save',all:'All',month:'Month',allMonths:'All Months',income:'Income',expense:'Expense',
+    vaccineTracker:'Vaccine Tracker',vaccSub:'Bird vaccination records & schedule',
+    add:'Add',projFilter:'Filter by Project',allProjects:'All Projects',
+    appearance:'Appearance & Language',darkMode:'Dark Mode',darkModeDesc:'Easier on the eyes',
+    language:'Language / ভাষা',projectMgmt:'Project Management',
+    expenseCategories:'Expense Categories',activeProjects:'Active Projects',
+    notes:'Notes',calendar:'Calendar',tasks:'Tasks',profileNav:'Profile',
+    home:'Home',daily:'Daily',history:'History',summary:'Summary',vaccine:'Vaccine',
+    selectProjectVacc:'Select a Project',autoTheme:'Follow System (Auto)',
+    autoThemeDesc:'Switches automatically based on your phone settings',editingNote:'Editing note...',
+    avgEggRate:'Average Egg Production Rate (All Projects)',transaction:'Transaction',
+    activeProjectHint:'Change active project from Profile',
+    noActiveProject:'No active project',fullReport:'Full Report',
+  }
+};
+let curLang='bn';
+function t(key){return LANGS[curLang][key]||LANGS.bn[key]||key;}
+function applyTranslations(){
+  document.querySelectorAll('[data-t]').forEach(el=>{const k=el.getAttribute('data-t');if(k&&LANGS[curLang][k])el.textContent=LANGS[curLang][k];});
+  document.getElementById('appTitle').textContent=t('appTitle');
+}
+function setLang(lang,btn){
+  curLang=lang;
+  document.querySelectorAll('.lang-pill').forEach(x=>x.classList.remove('active'));
+  btn.classList.add('active');
+  applyTranslations();
+}
+
+// ── CONSTANTS ─────────────────────────────────────────────────────────────────
+const COLORS=['#10b981','#3b82f6','#f59e0b','#ef4444','#8b5cf6','#ec4899','#06b6d4','#84cc16'];
+const DEFAULT_CATS=['খাদ্য/ফিড','ওষুধ','ঘর ভাড়া','বিদ্যুৎ','শ্রমিক মজুরি','পরিবহন','অন্যান্য'];
+const BIRD_LABELS={quail:'কোয়েল',duck:'হাঁস',chicken:'মুরগি',other:'মিশ্র'};
+const BIRD_ICONS={quail:'🐦',duck:'🦆',chicken:'🐔',other:'🥚'};
+const DEFAULT_VACCINES=['রানীক্ষেত (ND)','গামবোরো (IBD)','মারেক্স','ব্রংকাইটিস (IB)','ফাউল পক্স','কলেরা','সালমোনেলা','করাইজা (Coryza)','এভিয়ান ইনফ্লুয়েঞ্জা','হাঁসের প্লেগ'];
+const UNIT_OPTIONS=['কেজি','বস্তা','লিটার','পিস','প্যাকেট'];
+
+// Income sources
+const INCOME_SOURCES=[
+  {id:'egg_sell',icon:'🥚',label:'ডিম বিক্রি'},
+  {id:'bird_sell',icon:'🐔',label:'পাখি বিক্রি'},
+  {id:'manure',icon:'♻️',label:'সার বিক্রি'},
+  {id:'subsidy',icon:'🏛️',label:'ভর্তুকি/অনুদান'},
+  {id:'other_inc',icon:'💰',label:'অন্যান্য আয়'},
+];
+// Expense sources
+const EXPENSE_SOURCES=[
+  {id:'feed',icon:'🌾',label:'খাদ্য/ফিড'},
+  {id:'medicine',icon:'💊',label:'ওষুধ/ভ্যাকসিন'},
+  {id:'labor',icon:'👷',label:'শ্রমিক মজুরি'},
+  {id:'rent',icon:'🏠',label:'ঘর ভাড়া'},
+  {id:'electricity',icon:'⚡',label:'বিদ্যুৎ'},
+  {id:'transport',icon:'🚛',label:'পরিবহন'},
+  {id:'equipment',icon:'🔧',label:'সরঞ্জাম/যন্ত্রপাতি'},
+  {id:'other_exp',icon:'📋',label:'অন্যান্য খরচ'},
+];
+
+let data={projects:[],entries:[],categories:[...DEFAULT_CATS],vaccines:[],notes:[],tasks:[],birdLogs:[],feedLogs:[],healthLogs:[],dues:[],contacts:[],activeProjectId:''};
+let histFilter='all';
+let _entryType='income';
+let _entrySource='';
+let selColor=COLORS[0];
+let dCostCount=0;
+let lastClickedProjId='';
+let calYear=new Date().getFullYear();
+let calMonth=new Date().getMonth();
+let _editEntryId=null;
+let _editNoteId=null;
+let themeMode='auto'; // 'auto' | 'dark' | 'light'
+let homeFilter='all';
+
+function loadThemeAndLang(){
+  try{
+    const st=localStorage.getItem('pltry5_settings');
+    if(st){
+      const s=JSON.parse(st);
+      themeMode=s.themeMode||(s.dark!==undefined?(s.dark?'dark':'light'):'auto');
+      if(s.lang)setLangSilent(s.lang);
+    }
+  }catch(e){}
+  applyTheme();
+  try{
+    window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change',()=>{if(themeMode==='auto')applyTheme();});
+  }catch(e){}
+}
+function getActiveProject(){return data.activeProjectId?projById(data.activeProjectId):null;}
+function enterProject(pid){setActiveProject(pid);closeModalDirect();showNav('home');}
+function setActiveProject(pid){
+  data.activeProjectId=pid;
+  localStorage.setItem('pltry_activeProj_'+currentFarmId,pid);
+  renderHome();
+  const cur=document.querySelector('.page.active');
+  if(cur&&cur.id==='page-vaccine')renderVaccinePage();
+  if(cur&&cur.id==='page-summary')renderSummaryPage();
+  if(cur&&cur.id==='page-profile')renderProfileProjects();
+}
+function saveSettings(){localStorage.setItem('pltry5_settings',JSON.stringify({themeMode,lang:curLang}));}
+function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2,6);}
+function fmt(n){return Math.round(n).toLocaleString(curLang==='en'?'en-BD':'bn-BD');}
+
+// ── +/- STEPPER INPUT (easier than typing for basic users) ─────────────────────
+function stepperHtml(id,step,min,startVal){
+  const v=startVal!==undefined?startVal:min;
+  return`<div class="stepper">
+    <button type="button" class="stepper-btn" onclick="stepperChange('${id}',${-step},${min})"><i class="ti ti-minus"></i></button>
+    <input type="number" id="${id}" class="stepper-input" min="${min}" step="${step}" value="${v}" inputmode="numeric">
+    <button type="button" class="stepper-btn" onclick="stepperChange('${id}',${step},${min})"><i class="ti ti-plus"></i></button>
+  </div>`;
+}
+function stepperChange(id,delta,min){
+  const el=document.getElementById(id);if(!el)return;
+  let v=(parseFloat(el.value)||0)+delta;
+  if(v<min)v=min;
+  el.value=v;
+  el.dispatchEvent(new Event('input',{bubbles:true}));
+}
+function wireSteppers(ids){/* steppers work via inline onclick; reserved for future extension */}
+
+// ── TEAM ACTIVITY LOG (accountability — who did what) ───────────────────────────
+function logActivity(type,summary){
+  if(!currentFarmId||!currentUser)return;
+  fsCol('activityLog').add({type,summary,byEmail:currentUser.email,byRole:myRole||'admin',at:Date.now()})
+    .catch(err=>console.warn('activity log write failed',err));
+}
+// buyer/supplier উল্লেখ করলেই স্বয়ংক্রিয়ভাবে কন্টাক্ট তালিকায় যোগ হয়ে যাবে
+function ensureContact(name,type){
+  if(!name||!name.trim()||!currentFarmId)return;
+  name=name.trim();
+  const existing=data.contacts.find(c=>c.name.toLowerCase()===name.toLowerCase());
+  if(existing){
+    if(existing.type!==type&&existing.type!=='both')fsCol('contacts').doc(existing.id).update({type:'both'});
+    return;
+  }
+  fsCol('contacts').add({name,type,phone:'',address:'',note:'',createdAt:Date.now()});
+}
+function fmtDate(d){try{return new Date(d+'T00:00:00').toLocaleDateString(curLang==='en'?'en-BD':'bn-BD',{day:'numeric',month:'short',year:'numeric'});}catch{return d;}}
+function fmtDateShort(d){try{return new Date(d+'T00:00:00').toLocaleDateString(curLang==='en'?'en-BD':'bn-BD',{day:'numeric',month:'short'});}catch{return d;}}
+function fmtMonth(m){try{const[y,mo]=m.split('-');return new Date(y,mo-1,1).toLocaleDateString(curLang==='en'?'en-BD':'bn-BD',{month:'long',year:'numeric'});}catch{return m;}}
+function setTodayDate(id){document.getElementById(id).value=new Date().toISOString().split('T')[0];}
+function getMonths(){return[...new Set(data.entries.map(e=>e.date.slice(0,7)))].sort().reverse();}
+function projById(id){return data.projects.find(p=>p.id===id);}
+function todayStr(){return new Date().toISOString().split('T')[0];}
+function addDays(d,n){const dt=new Date(d+'T00:00:00');dt.setDate(dt.getDate()+n);return dt.toISOString().split('T')[0];}
+function daysDiff(d1,d2){return Math.round((new Date(d2)-new Date(d1))/(1000*86400));}
+function eggPct(eggs,birds){if(!birds||birds<=0)return null;return((eggs/birds)*100);}
+function pctColor(pct){if(pct>=75)return'#10b981';if(pct>=50)return'#f59e0b';return'#ef4444';}
+function pctClass(pct){if(pct>=75)return'pct-high';if(pct>=50)return'pct-mid';return'pct-low';}
+function sourceLabel(srcId,type){const arr=type==='income'?INCOME_SOURCES:EXPENSE_SOURCES;const s=arr.find(x=>x.id===srcId);return s?`${s.icon} ${s.label}`:'—';}
+
+// ── LIVE BIRD COUNT (starting count + new − death − sale) ─────────────────────
+function projBirdLogs(pid){return data.birdLogs.filter(b=>b.projId===pid);}
+function liveCount(p){
+  if(!p)return 0;
+  const logs=projBirdLogs(p.id);
+  const added=logs.filter(b=>b.type==='new').reduce((s,b)=>s+b.count,0);
+  const removed=logs.filter(b=>b.type==='death'||b.type==='sale').reduce((s,b)=>s+b.count,0);
+  return Math.max(0,(p.count||0)+added-removed);
+}
+function totalDeaths(pid,fromDate,toDate){
+  let logs=projBirdLogs(pid).filter(b=>b.type==='death');
+  if(fromDate)logs=logs.filter(b=>b.date>=fromDate);
+  if(toDate)logs=logs.filter(b=>b.date<=toDate);
+  return logs.reduce((s,b)=>s+b.count,0);
+}
+function mortalityRate(p){
+  if(!p||!p.count)return null;
+  const deaths=totalDeaths(p.id);
+  const base=p.count+projBirdLogs(p.id).filter(b=>b.type==='new').reduce((s,b)=>s+b.count,0);
+  if(!base)return null;
+  return(deaths/base)*100;
+}
+
+// ── THEME (DARK/LIGHT/AUTO) ────────────────────────────────────────────────────
+function systemPrefersDark(){
+  try{return window.matchMedia('(prefers-color-scheme: dark)').matches;}catch(e){return false;}
+}
+function applyTheme(){
+  const dark=themeMode==='auto'?systemPrefersDark():themeMode==='dark';
+  document.body.classList.toggle('dark',dark);
+  const tog=document.getElementById('darkToggle');
+  if(tog){tog.checked=dark;tog.disabled=themeMode==='auto';}
+  const autoTog=document.getElementById('autoThemeToggle');
+  if(autoTog)autoTog.checked=themeMode==='auto';
+}
+function toggleDark(on){
+  themeMode=on?'dark':'light';
+  applyTheme();saveSettings();
+}
+function toggleAutoTheme(on){
+  themeMode=on?'auto':(systemPrefersDark()?'dark':'light');
+  applyTheme();saveSettings();
+}
+
+function setLangSilent(lang){
+  curLang=lang;
+  document.querySelectorAll('.lang-pill').forEach(x=>{x.classList.toggle('active',x.textContent.trim()===(lang==='bn'?'বাংলা':'English'));});
+  applyTranslations();
+}
+
+// ── NAV ───────────────────────────────────────────────────────────────────────
+function showNav(p){
+  document.querySelectorAll('.page').forEach(x=>x.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(x=>x.classList.remove('active'));
+  document.getElementById('page-'+p).classList.add('active');
+  const nb=document.getElementById('nav-'+p);if(nb)nb.classList.add('active');
+  if(p==='home')renderHome();
+  if(p==='daily')renderDailyPage();
+  if(p==='summary')renderSummaryPage();
+  if(p==='vaccine')renderVaccinePage();
+  if(p==='settings')renderSettingsPage();
+  if(p==='profile')renderProfilePage();
+}
+
+// ── HOME ──────────────────────────────────────────────────────────────────────
+function renderHome(){
+  const ap=getActiveProject();
+  const scoped=ap?data.entries.filter(e=>e.projId===ap.id):[];
+  const inc=scoped.filter(e=>e.type==='income').reduce((s,e)=>s+e.amount,0);
+  const exp=scoped.filter(e=>e.type==='expense').reduce((s,e)=>s+e.amount,0);
+  const profit=inc-exp;
+  document.getElementById('hInc').textContent=fmt(inc)+' ৳';
+  document.getElementById('hExp').textContent=fmt(exp)+' ৳';
+  const pel=document.getElementById('hProfit');
+  pel.textContent=fmt(profit)+' ৳';pel.className='strip-val '+(profit>=0?'green':'red');
+
+  const today=todayStr();
+  const todayEntries=scoped.filter(e=>e.date===today);
+  const tInc=todayEntries.filter(e=>e.type==='income').reduce((s,e)=>s+e.amount,0);
+  const tExp=todayEntries.filter(e=>e.type==='expense').reduce((s,e)=>s+e.amount,0);
+  document.getElementById('hTodayInc').textContent=fmt(tInc)+' ৳';
+  document.getElementById('hTodayExp').textContent=fmt(tExp)+' ৳';
+  const tpel=document.getElementById('hTodayProfit');
+  const tProfit=tInc-tExp;
+  tpel.textContent=fmt(tProfit)+' ৳';tpel.className='strip-val '+(tProfit>=0?'green':'red');
+
+  const lc=liveCount(ap);
+  document.getElementById('hBirds').textContent=lc?fmt(lc):'０';
+  const mort=mortalityRate(ap);
+  document.getElementById('hMort').textContent=mort!==null?mort.toFixed(1)+'%':'—';
+  const feedCost=ap?feedCostThisMonth(ap.id):0;
+  document.getElementById('hFeedCost').textContent=fmt(feedCost)+' ৳';
+  const perBirdCost=lc?(exp/Math.max(1,[...new Set(scoped.map(e=>e.date))].length)/lc):null;
+  document.getElementById('hPerBirdCost').textContent=perBirdCost?fmt(perBirdCost)+' ৳':'—';
+
+  const totalEggsAllTime=scoped.filter(e=>e.type==='income').reduce((s,e)=>s+(e.eggs||0),0);
+  const costPerEgg=totalEggsAllTime>0?(exp/totalEggsAllTime):null;
+  document.getElementById('hCostPerEgg').textContent=costPerEgg!==null?fmt(costPerEgg)+' ৳':'—';
+  const feedKgTotal=ap?data.feedLogs.filter(f=>f.projId===ap.id&&f.type==='use').reduce((s,f)=>s+f.kg,0):0;
+  document.getElementById('hFeedPer100').textContent=(feedKgTotal>0&&totalEggsAllTime>0)?fmt((feedKgTotal/totalEggsAllTime)*100)+' কেজি':'—';
+
+  renderHomeVaccAlert();
+  renderHomeEggRate();
+  renderHomeCharts();
+  refreshVaccineBadge();
+  renderCurrentProjectBar();
+  renderRecentList();
+}
+function renderCurrentProjectBar(){
+  const el=document.getElementById('currentProjectBar');
+  if(!el)return;
+  const ap=getActiveProject();
+  if(!data.projects.length){
+    el.innerHTML=`<div class="card" style="text-align:center;padding:22px 16px;margin-bottom:14px">
+      <div style="font-size:36px;margin-bottom:8px">🐔</div>
+      <div style="font-weight:700;margin-bottom:4px">এখনো কোনো প্রজেক্ট নেই</div>
+      <div style="font-size:12px;color:var(--muted);margin-bottom:14px">আপনার প্রতিটা শেড বা ব্যাচকে একটা করে "প্রজেক্ট" হিসেবে যোগ করুন — এতে হিসাব আলাদা আলাদা থাকবে</div>
+      <button class="btn btn-primary btn-full" data-perm="projects" onclick="openModal('addProject')"><i class="ti ti-plus"></i> প্রথম প্রজেক্ট তৈরি করুন</button>
+    </div>`;
+    return;
+  }
+  if(!ap){
+    el.innerHTML=`<div class="card" style="text-align:center;padding:18px 16px;margin-bottom:14px">
+      <div style="font-weight:700;margin-bottom:10px">কোন প্রজেক্টে ঢুকতে চান?</div>
+      <button class="btn btn-primary btn-full" onclick="showProjectSwitcherModal()"><i class="ti ti-list"></i> প্রজেক্ট বেছে নিন</button>
+    </div>`;
+    return;
+  }
+  el.innerHTML=`<div class="card" style="display:flex;align-items:center;gap:10px;margin-bottom:14px;background:linear-gradient(135deg,${ap.color}22,${ap.color}08);border-color:${ap.color}55">
+    <div style="width:40px;height:40px;border-radius:11px;background:${ap.color}33;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0">${ap.icon}</div>
+    <div style="flex:1;min-width:0">
+      <div style="font-size:10px;color:var(--muted)">এখন যে প্রজেক্টে আছেন</div>
+      <div style="font-weight:700;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${ap.name}</div>
+    </div>
+    ${data.projects.length>1?`<button class="btn btn-sm" onclick="showProjectSwitcherModal()"><i class="ti ti-switch-horizontal"></i> পরিবর্তন</button>`:''}
+  </div>`;
+}
+function showProjectSwitcherModal(){
+  const rows=data.projects.map(p=>{
+    const isActive=data.activeProjectId===p.id;
+    return`<div class="card" style="padding:12px 14px;cursor:pointer;${isActive?'border-color:var(--purple);box-shadow:0 0 0 1px var(--purple)':''}" onclick="enterProject('${p.id}')">
+      <div style="display:flex;align-items:center;gap:10px">
+        <span style="font-size:22px">${p.icon}</span>
+        <div style="flex:1">
+          <div style="font-weight:600;font-size:13px">${p.name}${isActive?' ✓':''}</div>
+          <div style="font-size:11px;color:var(--muted)">${BIRD_LABELS[p.birdType]} · ${liveCount(p)}টি জীবিত</div>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+  document.getElementById('modalContent').innerHTML=`
+    <div class="modal-title"><span>🗂️ প্রজেক্ট বেছে নিন</span><button class="btn btn-sm" onclick="closeModalDirect()"><i class="ti ti-x"></i></button></div>
+    ${rows}
+    <button class="btn btn-sm btn-full" data-perm="projects" style="margin-top:10px" onclick="closeModalDirect();openModal('addProject')"><i class="ti ti-plus"></i> নতুন প্রজেক্ট যোগ করুন</button>`;
+  document.getElementById('modalOverlay').classList.remove('hidden');
+  applyPermissionUI();
+}
+
+function setHomeFilter(f,el){
+  homeFilter=f;
+  document.querySelectorAll('#page-home .ftab').forEach(x=>x.classList.remove('active'));
+  el.classList.add('active');
+  renderRecentList();
+}
+
+function renderRecentList(){
+  const ap=getActiveProject();
+  let entries=ap?data.entries.filter(e=>e.projId===ap.id):[];
+  if(homeFilter!=='all')entries=entries.filter(e=>e.type===homeFilter);
+  entries.sort((a,b)=>b.date.localeCompare(a.date)||b.createdAt-a.createdAt);
+  entries=entries.slice(0,120); // recent window, keeps things fast
+  const rl=document.getElementById('recentList');
+  if(!ap){rl.innerHTML='<div class="card empty"><i class="ti ti-clipboard-off"></i>কোনো প্রজেক্ট সক্রিয় নেই</div>';return;}
+  if(!entries.length){rl.innerHTML='<div class="card empty"><i class="ti ti-clipboard-off"></i>কোনো লেনদেন নেই</div>';return;}
+  const byDate={};entries.forEach(e=>{(byDate[e.date]=byDate[e.date]||[]).push(e);});
+  rl.innerHTML=Object.entries(byDate).sort((a,b)=>b[0].localeCompare(a[0])).map(([date,es])=>{
+    const dInc=es.filter(e=>e.type==='income').reduce((s,e)=>s+e.amount,0);
+    const dExp=es.filter(e=>e.type==='expense').reduce((s,e)=>s+e.amount,0);
+    const rows=es.map(e=>entryRowHtml(e,'deleteRecentEntry')).join('');
+    return`<div class="card" style="padding:10px 14px">
+      <div style="display:flex;justify-content:space-between;margin-bottom:6px">
+        <div style="font-size:13px;font-weight:600">${fmtDateShort(date)}</div>
+        <div style="font-size:12px;color:var(--muted)">আয় <span class="green">${fmt(dInc)}</span> · খরচ <span class="red">${fmt(dExp)}</span></div>
+      </div>${rows}</div>`;
+  }).join('');
+}
+
+function entryRowHtml(e,delFn){
+  const p=projById(e.projId);
+  const eggInfo=e.eggs>0&&p&&liveCount(p)?` · ${eggPct(e.eggs,liveCount(p)).toFixed(1)}% ডিম উৎপাদন`:'';
+  const sign=e.type==='income'?'+':'−';
+  return`<div class="entry-item">
+    <div class="entry-dot ${e.type==='income'?'dot-green':'dot-red'}">${sign}</div>
+    <div class="entry-info">
+      <div class="entry-primary">
+        <div class="entry-name">${e.label}</div>
+        <div class="entry-amt ${e.type==='income'?'green':'red'}">${sign}${fmt(e.amount)} ৳</div>
+      </div>
+      <div class="entry-meta">${p?p.name:''}${e.source?' · '+sourceLabel(e.source,e.type):''}${eggInfo}${e.paymentStatus==='due'?' · <span style="color:var(--red)">বকেয়া'+(e.dueAmount?' '+fmt(e.dueAmount)+' ৳':'')+'</span>':''}</div>
+    </div>
+    <div class="entry-actions">
+      ${e.source==='egg_sell'?`<button class="entry-edit" style="color:var(--blue)" onclick="downloadReceipt('${e.id}')" title="রসিদ"><i class="ti ti-receipt" style="font-size:12px"></i></button>`:''}
+      <button class="entry-edit" onclick="editEntry('${e.id}')"><i class="ti ti-pencil" style="font-size:12px"></i></button>
+      <button class="entry-del" onclick="${delFn}('${e.id}')"><i class="ti ti-trash" style="font-size:12px"></i></button>
+    </div>
+  </div>`;
+}
+
+// average egg production rate across every project, shown on Home
+function renderHomeEggRate(){
+  const el=document.getElementById('homeEggRate');
+  if(!el)return;
+  const p=getActiveProject();
+  const lc=liveCount(p);
+  if(!p||!lc){el.innerHTML='';return;}
+  const pe=data.entries.filter(e=>e.projId===p.id&&e.type==='income'&&e.eggs>0);
+  const pEggs=pe.reduce((s,e)=>s+(e.eggs||0),0);
+  const pDays=[...new Set(pe.map(e=>e.date))].length;
+  if(!pDays){el.innerHTML='';return;}
+  const avg=eggPct(pEggs/pDays,lc);
+  el.innerHTML=`<div class="egg-rate-card">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+      <span style="font-size:12px;font-weight:600;color:var(--muted)">🥚 <span data-t="avgEggRate">ডিম উৎপাদন হার</span></span>
+      <span class="pct-pill ${pctClass(avg)}" style="font-size:13px;padding:4px 12px">${avg.toFixed(1)}%</span>
+    </div>
+    <div class="pct-bar-bg" style="height:9px"><div class="pct-bar-fill" style="width:${Math.min(avg,100)}%;background:${pctColor(avg)}"></div></div>
+  </div>`;
+}
+
+// simple CSS bar-chart: last 7 days profit + egg count trend for the active project
+function renderHomeCharts(){
+  const el=document.getElementById('homeCharts');if(!el)return;
+  const ap=getActiveProject();
+  if(!ap){el.innerHTML='';return;}
+  const days=[];
+  for(let i=6;i>=0;i--)days.push(addDays(todayStr(),-i));
+  const scoped=data.entries.filter(e=>e.projId===ap.id);
+  const profits=days.map(d=>{
+    const de=scoped.filter(e=>e.date===d);
+    return de.filter(e=>e.type==='income').reduce((s,e)=>s+e.amount,0)-de.filter(e=>e.type==='expense').reduce((s,e)=>s+e.amount,0);
+  });
+  const eggs=days.map(d=>scoped.filter(e=>e.date===d&&e.type==='income').reduce((s,e)=>s+(e.eggs||0),0));
+  const maxProfitAbs=Math.max(1,...profits.map(v=>Math.abs(v)));
+  const maxEggs=Math.max(1,...eggs);
+  const barsProfit=days.map((d,i)=>{
+    const v=profits[i];const h=Math.max(3,Math.round((Math.abs(v)/maxProfitAbs)*46));
+    return`<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:3px">
+      <div style="width:100%;max-width:22px;height:${h}px;border-radius:4px;background:${v>=0?'var(--green)':'var(--red)'}"></div>
+      <div style="font-size:9px;color:var(--muted)">${fmtDateShort(d).split(' ')[0]}</div>
+    </div>`;
+  }).join('');
+  const barsEggs=days.map((d,i)=>{
+    const v=eggs[i];const h=Math.max(3,Math.round((v/maxEggs)*46));
+    return`<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:3px">
+      <div style="width:100%;max-width:22px;height:${h}px;border-radius:4px;background:var(--blue)"></div>
+      <div style="font-size:9px;color:var(--muted)">${fmtDateShort(d).split(' ')[0]}</div>
+    </div>`;
+  }).join('');
+  el.innerHTML=`
+    <div class="card">
+      <div class="section-label">📈 লাভের ট্রেন্ড (গত ৭ দিন)</div>
+      <div style="display:flex;align-items:flex-end;gap:4px;height:64px">${barsProfit}</div>
+    </div>
+    <div class="card">
+      <div class="section-label">🥚 ডিম উৎপাদনের ট্রেন্ড (গত ৭ দিন)</div>
+      <div style="display:flex;align-items:flex-end;gap:4px;height:64px">${barsEggs}</div>
+    </div>`;
+}
+
+// vaccine reminder banner shown on Home
+// ── LOCAL NOTIFICATIONS (works while app is open/backgrounded in a tab) ────────
+// এটা সত্যিকারের "push" নয় — অ্যাপ বন্ধ থাকা অবস্থায় নোটিফিকেশন আসবে না।
+// অ্যাপ খোলা বা ব্রাউজারে ব্যাকগ্রাউন্ডে থাকলে কাজ করবে।
+function toggleNotifications(checked){
+  if(!checked){localStorage.setItem('pltry_notif_'+currentFarmId,'off');return;}
+  if(typeof Notification==='undefined'){
+    alert('আপনার ব্রাউজার নোটিফিকেশন সাপোর্ট করে না।');
+    document.getElementById('notifToggle').checked=false;return;
+  }
+  Notification.requestPermission().then(perm=>{
+    if(perm==='granted'){
+      localStorage.setItem('pltry_notif_'+currentFarmId,'on');
+      checkAndNotify(true);
+    } else {
+      alert('নোটিফিকেশনের অনুমতি দেওয়া হয়নি। ব্রাউজার সেটিংস থেকে চালু করতে পারবেন।');
+      document.getElementById('notifToggle').checked=false;
+    }
+  });
+}
+function notifEnabled(){
+  return typeof Notification!=='undefined'&&Notification.permission==='granted'&&localStorage.getItem('pltry_notif_'+currentFarmId)==='on';
+}
+function checkAndNotify(force){
+  if(!notifEnabled()||!currentFarmId)return;
+  const today=todayStr();
+  const notifiedKey='pltry_notified_'+currentFarmId+'_'+today;
+  let notified=[];
+  try{notified=JSON.parse(localStorage.getItem(notifiedKey)||'[]');}catch(e){}
+  const alerts=[];
+  const vOverdue=data.vaccines.filter(v=>v.nextDate&&v.nextDate<today);
+  if(vOverdue.length)alerts.push({key:'vacc-overdue',title:'⚠️ ভ্যাকসিন মেয়াদোত্তীর্ণ',body:`${vOverdue.length}টি ভ্যাকসিন দেওয়ার সময় পার হয়েছে`});
+  const ap=getActiveProject();
+  if(ap){
+    const stock=feedStock(ap.id);
+    const avgUse=feedDailyAvgUse(ap.id);
+    const daysLeft=avgUse>0?Math.floor(stock/avgUse):null;
+    if(daysLeft!==null&&daysLeft<=3)alerts.push({key:'feed-low',title:'🌾 ফিড কমে যাচ্ছে',body:`${ap.name} — প্রায় ${daysLeft} দিনের ফিড বাকি`});
+  }
+  const dueOverdue=data.dues.filter(d=>!d.paid&&d.dueDate&&d.dueDate<today);
+  if(dueOverdue.length)alerts.push({key:'dues-overdue',title:'💵 পাওনা-দেনার মেয়াদ শেষ',body:`${dueOverdue.length}টি হিসাবের তারিখ পার হয়েছে`});
+  let changed=false;
+  alerts.forEach(a=>{
+    if(force||!notified.includes(a.key)){
+      try{new Notification(a.title,{body:a.body,icon:'icon-192.png',tag:a.key});}catch(e){}
+      if(!notified.includes(a.key)){notified.push(a.key);changed=true;}
+    }
+  });
+  if(changed)localStorage.setItem(notifiedKey,JSON.stringify(notified));
+}
+
+function renderHomeVaccAlert(){
+  const el=document.getElementById('homeVaccAlert');
+  if(!el)return;
+  const today=todayStr();
+  const ap=getActiveProject();
+  const banners=[];
+  const vOverdue=data.vaccines.filter(v=>v.nextDate&&v.nextDate<today);
+  const vUpcoming=data.vaccines.filter(v=>v.nextDate&&v.nextDate>=today&&daysDiff(today,v.nextDate)<=7);
+  if(vOverdue.length)banners.push(`<div class="notif-banner notif-overdue" onclick="showNav('vaccine')" style="cursor:pointer">
+    <div style="font-weight:600;color:var(--red);font-size:13px">⚠️ ${vOverdue.length}টি ভ্যাকসিন মেয়াদোত্তীর্ণ — এখনই দেখুন</div></div>`);
+  else if(vUpcoming.length)banners.push(`<div class="notif-banner notif-upcoming" onclick="showNav('vaccine')" style="cursor:pointer">
+    <div style="font-weight:600;color:var(--orange);font-size:13px">📅 ${vUpcoming.length}টি ভ্যাকসিন আগামী ৭ দিনে বাকি আছে</div></div>`);
+
+  if(ap){
+    const stock=feedStock(ap.id);
+    const avgUse=feedDailyAvgUse(ap.id);
+    const daysLeft=avgUse>0?Math.floor(stock/avgUse):null;
+    if(daysLeft!==null&&daysLeft<=3){
+      banners.push(`<div class="notif-banner notif-overdue" onclick="showNav('profile');switchProfileTab('feed',document.getElementById('ptab-feed'))" style="cursor:pointer">
+        <div style="font-weight:600;color:var(--red);font-size:13px">🌾 ফিড স্টক কমে যাচ্ছে — প্রায় ${daysLeft} দিন বাকি</div></div>`);
+    }
+  }
+  const dueOverdue=data.dues.filter(d=>!d.paid&&d.dueDate&&d.dueDate<today);
+  if(dueOverdue.length)banners.push(`<div class="notif-banner notif-overdue" onclick="showNav('profile');switchProfileTab('dues',document.getElementById('ptab-dues'))" style="cursor:pointer">
+    <div style="font-weight:600;color:var(--red);font-size:13px">💵 ${dueOverdue.length}টি পাওনা-দেনার মেয়াদ পার হয়েছে</div></div>`);
+
+  el.innerHTML=banners.join('');
+}
+
+function refreshVaccineBadge(){
+  const badge=document.getElementById('vaccBadge');
+  if(!badge)return;
+  const today=todayStr();
+  const overdue=data.vaccines.filter(v=>v.nextDate&&v.nextDate<today).length;
+  const upcoming=data.vaccines.filter(v=>v.nextDate&&v.nextDate>=today&&daysDiff(today,v.nextDate)<=3).length;
+  const n=overdue+upcoming;
+  if(n>0){badge.textContent=n>9?'9+':n;badge.classList.remove('hidden');}
+  else{badge.classList.add('hidden');}
+}
+
+function deleteRecentEntry(eid){
+  if(!can('entries')){alert('আপনার এই কাজের অনুমতি নেই!');return;}
+  if(!confirm('মুছবেন?'))return;
+  const e=data.entries.find(x=>x.id===eid);
+  fsCol('entries').doc(eid).delete();
+  if(e)logActivity('delete',`এন্ট্রি মুছে ফেলা হয়েছে — ${e.label} (${fmt(e.amount)} ৳)`);
+}
+
+function handleProjClick(pid){lastClickedProjId=pid;openProjDetail(pid);}
+let _curProjDetailId=null;
+function deleteProjEntryWrap(eid){deleteEntry(eid,_curProjDetailId);}
+
+
+// ── PROJECT DETAIL ────────────────────────────────────────────────────────────
+function openProjDetail(pid){
+  const p=projById(pid);if(!p)return;
+  const pe=[...data.entries.filter(e=>e.projId===pid)].sort((a,b)=>b.date.localeCompare(a.date)||b.createdAt-a.createdAt);
+  const inc=pe.filter(e=>e.type==='income').reduce((s,e)=>s+e.amount,0);
+  const exp=pe.filter(e=>e.type==='expense').reduce((s,e)=>s+e.amount,0);
+  const profit=inc-exp;
+  const totalEggs=pe.filter(e=>e.type==='income').reduce((s,e)=>s+(e.eggs||0),0);
+  const entryDays=[...new Set(pe.filter(e=>e.eggs>0).map(e=>e.date))].length;
+  const lc=liveCount(p);
+  const overallPct=lc&&entryDays?eggPct(totalEggs/entryDays,lc):null;
+  const mort=mortalityRate(p);
+  const roi=p.investment>0?(profit/p.investment)*100:null;
+
+  _curProjDetailId=pid;
+  const rows=pe.slice(0,30).map(e=>entryRowHtml(e,'deleteProjEntryWrap')).join('');
+
+  const pctBlock=overallPct!==null?`
+    <div style="margin-bottom:12px">
+      <div style="display:flex;justify-content:space-between;margin-bottom:4px">
+        <span style="font-size:12px;color:var(--muted)">গড় ডিম উৎপাদন হার</span>
+        <span class="pct-pill ${pctClass(overallPct)}">${overallPct.toFixed(1)}%</span>
+      </div>
+      <div class="pct-bar-bg"><div class="pct-bar-fill" style="width:${Math.min(overallPct,100)}%;background:${pctColor(overallPct)}"></div></div>
+      <div style="font-size:11px;color:var(--muted);margin-top:3px">মোট ডিম: ${fmt(totalEggs)} টি · ${entryDays} দিনে</div>
+    </div>`:'';
+
+  const isActive=data.activeProjectId===pid;
+  document.getElementById('modalContent').innerHTML=`
+    <div class="modal-title"><span>${p.icon} ${p.name}${isActive?' <span style="font-size:10px;background:var(--purple);color:#fff;padding:2px 8px;border-radius:50px;vertical-align:middle">সক্রিয়</span>':''}</span><button class="btn btn-sm" onclick="closeModalDirect()"><i class="ti ti-x"></i></button></div>
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px">
+      <span class="badge badge-gray">${BIRD_LABELS[p.birdType]}</span>
+      <span class="badge badge-gray">${lc}টি জীবিত (শুরু ${p.count})</span>
+      ${p.batchNumber?`<span class="badge badge-gray">ব্যাচ: ${p.batchNumber}</span>`:''}
+      <span class="badge ${p.status==='completed'?'badge-gray':'badge-green'}">${p.status==='completed'?'শেষ':'চলমান'}</span>
+      ${p.eggPrice?`<span class="badge badge-gray">ডিম: ${p.eggPrice} ৳</span>`:''}
+    </div>
+    ${pctBlock}
+    <div class="row3" style="margin-bottom:10px">
+      <div class="metric"><div class="metric-label">আয়</div><div class="metric-val green">${fmt(inc)} ৳</div></div>
+      <div class="metric"><div class="metric-label">খরচ</div><div class="metric-val red">${fmt(exp)} ৳</div></div>
+      <div class="metric"><div class="metric-label">লাভ/ক্ষতি</div><div class="metric-val ${profit>=0?'green':'red'}">${fmt(profit)} ৳</div></div>
+    </div>
+    <div class="row3" style="margin-bottom:14px">
+      <div class="metric"><div class="metric-label">মৃত্যুহার</div><div class="metric-val ${mort===null?'':(mort>10?'red':'')}">${mort!==null?mort.toFixed(1)+'%':'—'}</div></div>
+      <div class="metric"><div class="metric-label">বিনিয়োগ</div><div class="metric-val">${p.investment?fmt(p.investment)+' ৳':'—'}</div></div>
+      <div class="metric"><div class="metric-label">ROI</div><div class="metric-val ${roi===null?'':(roi>=0?'green':'red')}">${roi!==null?roi.toFixed(1)+'%':'—'}</div></div>
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px">
+      <button class="btn btn-sm" onclick="closeModalDirect();switchProfileTab('birds',document.getElementById('ptab-birds'));showNav('profile')"><i class="ti ti-feather"></i> পাখি লগ</button>
+      <button class="btn btn-sm" onclick="closeModalDirect();switchProfileTab('feed',document.getElementById('ptab-feed'));showNav('profile')"><i class="ti ti-wheat"></i> ফিড লগ</button>
+    </div>
+    <div class="divider"></div>
+    <div class="section-label">রেকর্ড</div>
+    ${rows||'<div class="empty" style="padding:16px">কোনো এন্ট্রি নেই</div>'}
+    <div class="divider"></div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      ${isActive?`<button class="btn btn-primary btn-sm" onclick="closeModalDirect();showNav('daily')"><i class="ti ti-plus"></i> হিসাব দিন</button>`
+        :`<button class="btn btn-purple btn-sm" onclick="enterProject('${p.id}')"><i class="ti ti-arrow-right-circle"></i> এই প্রজেক্টে ঢুকুন</button>`}
+      <button class="btn btn-sm" onclick="editProjectModal('${p.id}')"><i class="ti ti-edit"></i> সম্পাদনা</button>
+      <button class="btn btn-danger btn-sm" onclick="deleteProject('${p.id}')"><i class="ti ti-trash"></i> মুছুন</button>
+    </div>`;
+  document.getElementById('modalOverlay').classList.remove('hidden');
+}
+
+function deleteEntry(eid,pid){
+  if(!can('entries')){alert('আপনার এই কাজের অনুমতি নেই!');return;}
+  if(!confirm('মুছবেন?'))return;
+  const e=data.entries.find(x=>x.id===eid);
+  fsCol('entries').doc(eid).delete();
+  if(e)logActivity('delete',`এন্ট্রি মুছে ফেলা হয়েছে — ${e.label} (${fmt(e.amount)} ৳)`);
+  if(pid)openProjDetail(pid);
+}
+async function deleteProject(pid){
+  if(!can('projects')){alert('আপনার এই কাজের অনুমতি নেই!');return;}
+  const proj=data.projects.find(p=>p.id===pid);
+  if(!confirm('প্রজেক্ট ও সব লেনদেন মুছবেন?'))return;
+  const batch=db.batch();
+  batch.delete(fsCol('projects').doc(pid));
+  for(const col of['entries','vaccines','birdLogs','feedLogs','healthLogs','dues']){
+    const snap=await fsCol(col).where('projId','==',pid).get();
+    snap.forEach(d=>batch.delete(d.ref));
+  }
+  await batch.commit();
+  if(proj)logActivity('delete',`প্রজেক্ট মুছে ফেলা হয়েছে — ${proj.name}`);
+  if(data.activeProjectId===pid){
+    data.activeProjectId=data.projects.find(p=>p.id!==pid)?.id||'';
+    localStorage.setItem('pltry_activeProj_'+currentFarmId,data.activeProjectId);
+  }
+  closeModalDirect();renderHome();
+  if(document.getElementById('page-settings').classList.contains('active'))renderSettingsPage();
+  if(document.getElementById('page-profile').classList.contains('active'))renderProfileProjects();
+}
+
+
+// ── EDIT ENTRY ────────────────────────────────────────────────────────────────
+function editEntry(eid){
+  const e=data.entries.find(x=>x.id===eid);if(!e)return;
+  _editEntryId=eid;
+  _entryType=e.type;
+  _entrySource=e.source||'';
+  const pid=e.projId;
+  const ep=projById(pid);
+  const sources=e.type==='income'?INCOME_SOURCES:EXPENSE_SOURCES;
+  const sourceGrid=sources.map(s=>`<button type="button" class="source-opt ${s.id===_entrySource?'sel-'+e.type:''}" onclick="selectSource('${s.id}','${e.type}',this)">${s.icon}<br>${s.label}</button>`).join('');
+
+  document.getElementById('modalContent').innerHTML=`
+    <div class="modal-title"><span>✏️ লেনদেন সম্পাদনা</span><button class="btn btn-sm" onclick="closeModalDirect();_editEntryId=null"><i class="ti ti-x"></i></button></div>
+    <div class="type-toggle">
+      <button type="button" class="type-btn ${e.type==='income'?'active-inc':''}" id="etInc" onclick="setEntryTypeEdit('income')">📈 আয়</button>
+      <button type="button" class="type-btn ${e.type==='expense'?'active-exp':''}" id="etExp" onclick="setEntryTypeEdit('expense')">📉 খরচ</button>
+    </div>
+    <div class="fg" style="margin-bottom:10px">
+      <div style="display:flex;align-items:center;gap:8px;background:var(--bg);border-radius:10px;padding:8px 12px">
+        <span style="font-size:20px">${ep?ep.icon:'❓'}</span>
+        <div style="flex:1"><div style="font-weight:600;font-size:13px">${ep?ep.name:'অজানা প্রজেক্ট'}</div></div>
+      </div>
+      <select id="eProjSel" class="hidden"><option value="${pid}" selected>${ep?ep.name:''}</option></select>
+    </div>
+    <div class="fg">
+      <label id="sourceLabel">${e.type==='income'?'আয়ের উৎস':'খরচের কারণ'}</label>
+      <div class="source-grid" id="sourceGrid">${sourceGrid}</div>
+    </div>
+    <div id="eggSaleBox"></div>
+    <div class="row2">
+      <div class="fg"><label>বিবরণ *</label><input type="text" id="eLabel" placeholder="বিবরণ লিখুন..." value="${e.label}"></div>
+      <div class="fg"><label>পরিমাণ (৳) *</label><input type="number" id="eAmount" placeholder="0" min="0" value="${e.amount}"></div>
+    </div>
+    <div class="row2">
+      <div class="fg"><label>তারিখ</label><input type="date" id="eDate" value="${e.date}"></div>
+      <div class="fg" style="display:flex;align-items:flex-end"><button type="button" class="btn btn-sm" onclick="setTodayDate('eDate')">আজ</button></div>
+    </div>
+    <div class="fg"><label>নোট</label><input type="text" id="eNote" placeholder="ঐচ্ছিক..." value="${e.note||''}"></div>
+    ${expenseDetailBoxHtml(e)}
+    <button class="btn btn-primary btn-full" onclick="saveEditedEntry()"><i class="ti ti-device-floppy"></i> আপডেট করুন</button>`;
+  if(_entrySource==='egg_sell')renderEggSaleBox(e.eggs||'',e.amount&&e.eggs?(e.amount/e.eggs):'',e.buyerName||'');
+  document.getElementById('modalOverlay').classList.remove('hidden');
+}
+
+function setEntryTypeEdit(t){
+  _entryType=t;_entrySource='';
+  document.getElementById('etInc').className='type-btn'+(t==='income'?' active-inc':'');
+  document.getElementById('etExp').className='type-btn'+(t==='expense'?' active-exp':'');
+  document.getElementById('sourceLabel').textContent=t==='income'?'আয়ের উৎস':'খরচের কারণ';
+  const sources=t==='income'?INCOME_SOURCES:EXPENSE_SOURCES;
+  document.getElementById('sourceGrid').innerHTML=sources.map(s=>`<button type="button" class="source-opt" onclick="selectSource('${s.id}','${t}',this)">${s.icon}<br>${s.label}</button>`).join('');
+  document.getElementById('eggSaleBox').innerHTML='';
+}
+
+function saveEditedEntry(){
+  if(!can('entries')){alert('আপনার এই কাজের অনুমতি নেই!');return;}
+  const e=data.entries.find(x=>x.id===_editEntryId);if(!e)return;
+  const pid=document.getElementById('eProjSel')?.value;
+  if(!pid){alert('প্রজেক্ট নির্বাচন করুন!');return;}
+  const amt=parseFloat(document.getElementById('eAmount').value);
+  if(!amt||amt<=0){alert('পরিমাণ দিন!');return;}
+  const label=document.getElementById('eLabel').value.trim();
+  if(!label){alert('বিবরণ দিন!');return;}
+  const buyerName=_entrySource==='egg_sell'?(document.getElementById('eggBuyerInp')?.value.trim()||''):'';
+  const supplier=document.getElementById('eSupplier')?.value.trim()||'';
+  const upd={
+    projId:pid,type:_entryType,amount:amt,label,
+    date:document.getElementById('eDate').value,
+    source:_entrySource,
+    cat:_entrySource?sourceLabel(_entrySource,_entryType).replace(/^\S+\s/,''):'',
+    eggs:_entrySource==='egg_sell'?(parseInt(document.getElementById('eggEggsInp')?.value)||0):0,
+    buyerName,
+    note:document.getElementById('eNote').value.trim(),
+    supplier,
+    invoiceNo:document.getElementById('eInvoice')?.value.trim()||'',
+    qty:parseFloat(document.getElementById('eQty')?.value)||0,
+    unit:document.getElementById('eUnit')?.value||'',
+    unitPrice:parseFloat(document.getElementById('eUnitPrice')?.value)||0,
+    dueAmount:parseFloat(document.getElementById('eDueAmount')?.value)||0,
+    paymentStatus:document.getElementById('ePaymentStatus')?.value||'paid'
+  };
+  fsCol('entries').doc(_editEntryId).update(upd);
+  if(buyerName)ensureContact(buyerName,'buyer');
+  if(supplier)ensureContact(supplier,'supplier');
+  logActivity('edit',`এন্ট্রি এডিট — ${label} (${fmt(amt)} ৳)`);
+  closeModalDirect();_editEntryId=null;
+}
+
+
+// ── ADD PROJECT ───────────────────────────────────────────────────────────────
+function openModal(type,extra){
+  if(type==='addProject')showAddProjectModal(extra);
+  if(type==='addEntry')showAddEntryModal(extra);
+  if(type==='addVaccine')showAddVaccineModal(extra);
+  if(type==='addBirdLog')showAddBirdLogModal(extra);
+  if(type==='addHealthLog')showAddHealthLogModal(extra);
+  if(type==='addFeedLog')showAddFeedLogModal(extra);
+  if(type==='addDue')showAddDueModal(extra);
+  if(type==='addContact')showAddContactModal(extra);
+  document.getElementById('modalOverlay').classList.remove('hidden');
+}
+function editProjectModal(pid){showAddProjectModal(pid);document.getElementById('modalOverlay').classList.remove('hidden');}
+
+function showAddProjectModal(editId){
+  const ep=editId?projById(editId):null;
+  selColor=ep?ep.color:COLORS[0];
+  const colorOpts=COLORS.map(c=>`<div class="color-opt ${c===selColor?'sel':''}" style="background:${c}" onclick="selColor='${c}';document.querySelectorAll('.color-opt').forEach(x=>x.classList.remove('sel'));this.classList.add('sel')"></div>`).join('');
+  document.getElementById('modalContent').innerHTML=`
+    <div class="modal-title"><span>${ep?'প্রজেক্ট সম্পাদনা':'নতুন প্রজেক্ট তৈরি'}</span><button class="btn btn-sm" onclick="closeModalDirect()"><i class="ti ti-x"></i></button></div>
+    <div class="fg"><label>প্রজেক্টের নাম *</label><input type="text" id="pName" placeholder="যেমন: ৫০০ কোয়েল ফার্ম" value="${ep?ep.name:''}"></div>
+    <div class="row2">
+      <div class="fg"><label>পাখির ধরন</label>
+        <select id="pBird">
+          <option value="quail" ${!ep||ep.birdType==='quail'?'selected':''}>🐦 কোয়েল</option>
+          <option value="duck" ${ep&&ep.birdType==='duck'?'selected':''}>🦆 হাঁস</option>
+          <option value="chicken" ${ep&&ep.birdType==='chicken'?'selected':''}>🐔 মুরগি</option>
+          <option value="other" ${ep&&ep.birdType==='other'?'selected':''}>🥚 মিশ্র</option>
+        </select>
+      </div>
+      <div class="fg"><label>শুরুর পাখির সংখ্যা</label><input type="number" id="pCount" min="0" placeholder="যেমন: 500" value="${ep?ep.count:''}"></div>
+    </div>
+    <div class="row2">
+      <div class="fg"><label>ডিমের দাম (৳/টি)</label><input type="number" id="pEggPrice" step="0.5" placeholder="যেমন: 3" value="${ep?ep.eggPrice:''}"></div>
+      <div class="fg"><label>প্রতি পাখি মাসিক খরচ (৳)</label><input type="number" id="pBirdCost" placeholder="যেমন: 42" value="${ep?ep.birdCost||'':''}"></div>
+    </div>
+    <div class="row2">
+      <div class="fg"><label>ব্যাচ নম্বর</label><input type="text" id="pBatch" placeholder="যেমন: ব্যাচ-১" value="${ep?ep.batchNumber||'':''}"></div>
+      <div class="fg"><label>মোট বিনিয়োগ (৳)</label><input type="number" id="pInvestment" placeholder="যেমন: 50000" value="${ep?ep.investment||'':''}"></div>
+    </div>
+    <div class="row2">
+      <div class="fg"><label>শুরুর তারিখ</label><input type="date" id="pStartDate" value="${ep?ep.startDate||'':''}"></div>
+      <div class="fg"><label>শেষ তারিখ (ঐচ্ছিক)</label><input type="date" id="pEndDate" value="${ep?ep.endDate||'':''}"></div>
+    </div>
+    <div class="fg"><label>প্রজেক্ট স্ট্যাটাস</label>
+      <select id="pStatus">
+        <option value="active" ${!ep||ep.status!=='completed'?'selected':''}>চলমান</option>
+        <option value="completed" ${ep&&ep.status==='completed'?'selected':''}>শেষ</option>
+      </select>
+    </div>
+    <div class="fg"><label>নোট</label><textarea id="pDesc" rows="2" placeholder="ঐচ্ছিক...">${ep?ep.desc||'':''}</textarea></div>
+    <div class="fg"><label>প্রজেক্টের রঙ</label><div class="color-opts">${colorOpts}</div></div>
+    <button class="btn btn-primary btn-full" onclick="saveProject('${editId||''}')"><i class="ti ti-device-floppy"></i> ${ep?'আপডেট':'তৈরি করুন'}</button>`;
+}
+
+function saveProject(editId){
+  if(!can('projects')){alert('আপনার এই কাজের অনুমতি নেই!');return;}
+  const name=document.getElementById('pName').value.trim();
+  if(!name){alert('নাম দিন!');return;}
+  const birdType=document.getElementById('pBird').value;
+  const proj={
+    name,birdType,icon:BIRD_ICONS[birdType],
+    count:parseInt(document.getElementById('pCount').value)||0,
+    eggPrice:parseFloat(document.getElementById('pEggPrice').value)||0,
+    birdCost:parseFloat(document.getElementById('pBirdCost').value)||0,
+    batchNumber:document.getElementById('pBatch').value.trim(),
+    investment:parseFloat(document.getElementById('pInvestment').value)||0,
+    startDate:document.getElementById('pStartDate').value||'',
+    endDate:document.getElementById('pEndDate').value||'',
+    status:document.getElementById('pStatus').value||'active',
+    color:selColor,desc:document.getElementById('pDesc').value.trim()
+  };
+  if(editId){
+    fsCol('projects').doc(editId).update(proj);
+    logActivity('edit',`প্রজেক্ট এডিট — ${name}`);
+  } else {
+    proj.createdAt=Date.now();
+    fsCol('projects').add(proj).then(ref=>{
+      if(!data.activeProjectId){data.activeProjectId=ref.id;localStorage.setItem('pltry_activeProj_'+currentFarmId,ref.id);}
+    });
+    logActivity('create',`নতুন প্রজেক্ট তৈরি — ${name}`);
+  }
+  closeModalDirect();
+  if(document.getElementById('page-settings').classList.contains('active'))renderSettingsPage();
+  if(document.getElementById('page-profile').classList.contains('active'))renderProfileProjects();
+}
+
+// ── ADD ENTRY MODAL ───────────────────────────────────────────────────────────
+function showAddEntryModal(prefProjId){
+  _editEntryId=null;
+  _entryType='income';
+  _entrySource='';
+  const ap=prefProjId?projById(prefProjId):getActiveProject();
+  if(!ap){
+    document.getElementById('modalContent').innerHTML=`
+      <div class="modal-title"><span>নতুন লেনদেন</span><button class="btn btn-sm" onclick="closeModalDirect()"><i class="ti ti-x"></i></button></div>
+      <p style="color:var(--red);font-size:13px">কোনো প্রজেক্ট সক্রিয় নেই। হোম থেকে একটি প্রজেক্ট তৈরি করুন বা বেছে নিন।</p>`;
+    return;
+  }
+  const today=new Date().toISOString().split('T')[0];
+  document.getElementById('modalContent').innerHTML=`
+    <div class="modal-title"><span>নতুন লেনদেন</span><button class="btn btn-sm" onclick="closeModalDirect()"><i class="ti ti-x"></i></button></div>
+    <div class="type-toggle">
+      <button type="button" class="type-btn active-inc" id="etInc" onclick="setEntryType('income')">📈 আয়</button>
+      <button type="button" class="type-btn" id="etExp" onclick="setEntryType('expense')">📉 খরচ</button>
+    </div>
+    <div class="fg" style="margin-bottom:10px">
+      <div style="display:flex;align-items:center;gap:8px;background:var(--bg);border-radius:10px;padding:8px 12px">
+        <span style="font-size:20px">${ap.icon}</span>
+        <div style="flex:1"><div style="font-weight:600;font-size:13px">${ap.name}</div><div style="font-size:10px;color:var(--muted)" data-t="activeProjectHint">প্রোফাইল থেকে সক্রিয় প্রজেক্ট পরিবর্তন করুন</div></div>
+      </div>
+      <select id="eProjSel" class="hidden"><option value="${ap.id}" selected>${ap.name}</option></select>
+    </div>
+    <div class="fg">
+      <label id="sourceLabel">আয়ের উৎস</label>
+      <div class="source-grid" id="sourceGrid">${INCOME_SOURCES.map(s=>`<button type="button" class="source-opt" onclick="selectSource('${s.id}','income',this)">${s.icon}<br>${s.label}</button>`).join('')}</div>
+    </div>
+    <div id="eggSaleBox"></div>
+    <div class="row2">
+      <div class="fg"><label>বিবরণ *</label><input type="text" id="eLabel" placeholder="যেমন: ডিম বিক্রি, ফিড কেনা..."></div>
+      <div class="fg"><label>পরিমাণ (৳) *</label><input type="number" id="eAmount" placeholder="0" min="0"></div>
+    </div>
+    <div class="row2">
+      <div class="fg"><label>তারিখ</label><input type="date" id="eDate" value="${today}"></div>
+      <div class="fg" style="display:flex;align-items:flex-end"><button type="button" class="btn btn-sm" onclick="setTodayDate('eDate')">আজ</button></div>
+    </div>
+    <div class="fg"><label>নোট</label><input type="text" id="eNote" placeholder="ঐচ্ছিক..."></div>
+    ${expenseDetailBoxHtml()}
+    <button class="btn btn-primary btn-full" onclick="saveEntry()"><i class="ti ti-device-floppy"></i> সেভ করুন</button>`;
+}
+
+// optional expense/income detail fields (supplier, invoice, qty/unit, dues) — collapsed by default
+function expenseDetailBoxHtml(e){
+  e=e||{};
+  return`<div class="fg">
+    <span style="font-size:12px;color:var(--blue);cursor:pointer;display:inline-flex;align-items:center;gap:4px" onclick="toggleExpenseDetail()"><i class="ti ti-plus" id="expDetailIcon"></i> বিস্তারিত (সাপ্লায়ার, চালান, বকেয়া...) </span>
+  </div>
+  <div id="expenseDetailBox" class="hidden" style="background:var(--bg);border-radius:10px;padding:10px;margin-bottom:12px">
+    <div class="row2">
+      <div class="fg"><label>সাপ্লায়ার/বিক্রেতার নাম</label><input type="text" id="eSupplier" list="supplierNamesList" value="${e.supplier||''}"></div>
+      <div class="fg"><label>চালান/বিল নম্বর</label><input type="text" id="eInvoice" value="${e.invoiceNo||''}"></div>
+    </div>
+    <div class="row3">
+      <div class="fg"><label>পরিমাণ</label><input type="number" id="eQty" min="0" step="0.01" value="${e.qty||''}"></div>
+      <div class="fg"><label>একক</label>
+        <select id="eUnit">
+          <option value="">—</option>
+          ${UNIT_OPTIONS.map(u=>`<option value="${u}" ${e.unit===u?'selected':''}>${u}</option>`).join('')}
+        </select>
+      </div>
+      <div class="fg"><label>একক মূল্য (৳)</label><input type="number" id="eUnitPrice" min="0" value="${e.unitPrice||''}"></div>
+    </div>
+    <div class="row2">
+      <div class="fg"><label>বকেয়া টাকা (৳)</label><input type="number" id="eDueAmount" min="0" value="${e.dueAmount||''}"></div>
+      <div class="fg"><label>পেমেন্ট স্ট্যাটাস</label>
+        <select id="ePaymentStatus">
+          <option value="paid" ${!e.paymentStatus||e.paymentStatus==='paid'?'selected':''}>পরিশোধিত</option>
+          <option value="due" ${e.paymentStatus==='due'?'selected':''}>বকেয়া</option>
+        </select>
+      </div>
+    </div>
+  </div>`;
+}
+function toggleExpenseDetail(){
+  const box=document.getElementById('expenseDetailBox');
+  const icon=document.getElementById('expDetailIcon');
+  const open=box.classList.contains('hidden');
+  box.classList.toggle('hidden');
+  if(icon)icon.className='ti '+(open?'ti-minus':'ti-plus');
+}
+
+function selectSource(srcId,type,btn){
+  _entrySource=srcId;
+  document.querySelectorAll('#sourceGrid .source-opt').forEach(x=>x.classList.remove('sel-income','sel-expense'));
+  btn.classList.add('sel-'+type);
+  // Auto-fill label if empty
+  const lblEl=document.getElementById('eLabel');
+  if(lblEl&&!lblEl.value){
+    const sources=type==='income'?INCOME_SOURCES:EXPENSE_SOURCES;
+    const s=sources.find(x=>x.id===srcId);
+    if(s)lblEl.value=s.label;
+  }
+  if(srcId==='egg_sell')renderEggSaleBox();
+  else{const box=document.getElementById('eggSaleBox');if(box)box.innerHTML='';}
+}
+
+// egg-sale sub-fields: how many eggs, price per egg, live % of production
+function renderEggSaleBox(presetEggs,presetPrice,presetBuyer){
+  const box=document.getElementById('eggSaleBox');if(!box)return;
+  const pid=document.getElementById('eProjSel')?.value;
+  const p=projById(pid);
+  box.innerHTML=`
+    <div class="egg-sale-box">
+      <div class="row2">
+        <div class="fg" style="margin-bottom:6px"><label>ডিমের সংখ্যা (টি)</label><input type="number" id="eggEggsInp" min="0" placeholder="0" value="${presetEggs||''}" oninput="eggSaleCalc()"></div>
+        <div class="fg" style="margin-bottom:6px"><label>প্রতি ডিমের দাম (৳)</label><input type="number" id="eggPriceInp" min="0" step="0.5" placeholder="${p&&p.eggPrice?p.eggPrice:3}" value="${presetPrice||(p?p.eggPrice||'':'')}" oninput="eggSaleCalc()"></div>
+      </div>
+      <div class="fg" style="margin-bottom:6px"><label>ক্রেতার নাম (ঐচ্ছিক — রসিদ তৈরির জন্য)</label><input type="text" id="eggBuyerInp" list="buyerNamesList" placeholder="যেমন: করিম পাইকার" value="${presetBuyer||''}"></div>
+      <div id="eggSalePctPreview"></div>
+    </div>`;
+  eggSaleCalc();
+}
+function entryEggBoxUpdate(){ if(_entrySource==='egg_sell')renderEggSaleBox(); }
+function eggSaleCalc(){
+  const eggs=parseFloat(document.getElementById('eggEggsInp')?.value)||0;
+  const price=parseFloat(document.getElementById('eggPriceInp')?.value)||0;
+  const total=eggs*price;
+  const amtEl=document.getElementById('eAmount');
+  if(amtEl&&(eggs>0||price>0))amtEl.value=total||'';
+  const pid=document.getElementById('eProjSel')?.value;
+  const p=projById(pid);
+  const lc=liveCount(p);
+  const pctEl=document.getElementById('eggSalePctPreview');
+  if(!pctEl)return;
+  if(p&&lc&&eggs>0){
+    const pct=eggPct(eggs,lc);
+    pctEl.innerHTML=`<div style="display:flex;align-items:center;gap:8px;margin-top:4px">
+      <div class="pct-bar-bg" style="flex:1"><div class="pct-bar-fill" style="width:${Math.min(pct,100)}%;background:${pctColor(pct)}"></div></div>
+      <span class="pct-pill ${pctClass(pct)}">${pct.toFixed(1)}% উৎপাদন</span>
+    </div>
+    <div style="font-size:11px;color:var(--muted);margin-top:3px">${lc}টি পাখি থেকে ${eggs}টি ডিম · মোট ${fmt(total)} ৳</div>`;
+  } else {pctEl.innerHTML=total?`<div style="font-size:11px;color:var(--muted);margin-top:4px">মোট: ${fmt(total)} ৳</div>`:'';}
+}
+
+function setEntryType(t){
+  _entryType=t;_entrySource='';
+  document.getElementById('etInc').className='type-btn'+(t==='income'?' active-inc':'');
+  document.getElementById('etExp').className='type-btn'+(t==='expense'?' active-exp':'');
+  document.getElementById('sourceLabel').textContent=t==='income'?'আয়ের উৎস':'খরচের কারণ';
+  const sources=t==='income'?INCOME_SOURCES:EXPENSE_SOURCES;
+  document.getElementById('sourceGrid').innerHTML=sources.map(s=>`<button type="button" class="source-opt" onclick="selectSource('${s.id}','${t}',this)">${s.icon}<br>${s.label}</button>`).join('');
+  document.getElementById('eggSaleBox').innerHTML='';
+  // reset label
+  const lblEl=document.getElementById('eLabel');if(lblEl)lblEl.value='';
+}
+
+function saveEntry(){
+  if(!can('entries')){alert('আপনার এই কাজের অনুমতি নেই!');return;}
+  const pid=document.getElementById('eProjSel')?.value;
+  if(!pid){alert('প্রজেক্ট নির্বাচন করুন!');return;}
+  const amt=parseFloat(document.getElementById('eAmount').value);
+  if(!amt||amt<=0){alert('পরিমাণ দিন!');return;}
+  const label=document.getElementById('eLabel').value.trim();
+  if(!label){alert('বিবরণ দিন!');return;}
+  const eggs=_entrySource==='egg_sell'?(parseInt(document.getElementById('eggEggsInp')?.value)||0):0;
+  const buyerName=_entrySource==='egg_sell'?(document.getElementById('eggBuyerInp')?.value.trim()||''):'';
+  const supplier=document.getElementById('eSupplier')?.value.trim()||'';
+  fsCol('entries').add({projId:pid,type:_entryType,amount:amt,label,
+    source:_entrySource,
+    date:document.getElementById('eDate').value,
+    cat:_entrySource?sourceLabel(_entrySource,_entryType).replace(/^\S+\s/,''):'',
+    eggs,buyerName,
+    note:document.getElementById('eNote').value.trim(),
+    supplier,
+    invoiceNo:document.getElementById('eInvoice')?.value.trim()||'',
+    qty:parseFloat(document.getElementById('eQty')?.value)||0,
+    unit:document.getElementById('eUnit')?.value||'',
+    unitPrice:parseFloat(document.getElementById('eUnitPrice')?.value)||0,
+    dueAmount:parseFloat(document.getElementById('eDueAmount')?.value)||0,
+    paymentStatus:document.getElementById('ePaymentStatus')?.value||'paid',
+    createdBy:currentUser.email,
+    createdAt:Date.now()});
+  if(buyerName)ensureContact(buyerName,'buyer');
+  if(supplier)ensureContact(supplier,'supplier');
+  logActivity(_entryType,`${_entryType==='income'?'আয়':'খরচ'} — ${label} (${fmt(amt)} ৳)`);
+  closeModalDirect();
+}
+
+
+// ── DAILY ─────────────────────────────────────────────────────────────────────
+function renderDailyPage(){
+  const ap=getActiveProject();
+  const wrap=document.getElementById('dailyProjWrap');
+  const sel=document.getElementById('dailyProjSel');
+  if(!ap){
+    wrap.innerHTML=`<p style="color:var(--red);font-size:13px">কোনো প্রজেক্ট সক্রিয় নেই — হোম থেকে একটি প্রজেক্ট বেছে নিন</p>`;
+    sel.innerHTML='';
+  } else {
+    wrap.innerHTML=`<label data-t="project">প্রজেক্ট</label>
+      <div style="display:flex;align-items:center;gap:8px;background:var(--bg);border-radius:10px;padding:8px 12px">
+        <span style="font-size:20px">${ap.icon}</span>
+        <div style="flex:1"><div style="font-weight:600;font-size:13px">${ap.name}</div><div style="font-size:10px;color:var(--muted)" data-t="activeProjectHint">প্রোফাইল থেকে সক্রিয় প্রজেক্ট পরিবর্তন করুন</div></div>
+      </div>`;
+    sel.innerHTML=`<option value="${ap.id}" selected>${ap.name}</option>`;
+  }
+  setTodayDate('dailyDate');dCostCount=0;renderDailyForm();
+}
+function renderDailyForm(){
+  const pid=document.getElementById('dailyProjSel').value;
+  const p=projById(pid);
+  if(!p){document.getElementById('dailyFormBody').innerHTML='<div class="empty">প্রজেক্ট নির্বাচন করুন</div>';return;}
+  document.getElementById('dailyFormBody').innerHTML=`
+    <div class="card">
+      <div class="section-label">${p.icon} ডিম বিক্রি</div>
+      <div class="row2">
+        <div class="fg"><label>ডিমের সংখ্যা (টি)</label><input type="number" id="dEggs" min="0" placeholder="0" oninput="dailyPreview()"></div>
+        <div class="fg"><label>প্রতি ডিমের দাম (৳)</label><input type="number" id="dPrice" value="${p.eggPrice||''}" placeholder="${p.eggPrice||3}" oninput="dailyPreview()"></div>
+      </div>
+      <div id="eggPctPreview" style="margin-top:-4px;margin-bottom:10px"></div>
+      <div class="fg"><label>ক্রেতার নাম / নোট</label><input type="text" id="dSaleNote" placeholder="ঐচ্ছিক..."></div>
+    </div>
+    <div class="card">
+      <div class="section-label">আজকের খরচ</div>
+      <div id="dCostRows"></div>
+      <button class="btn btn-sm" onclick="addDailyCostRow()"><i class="ti ti-plus"></i> খরচ যোগ করুন</button>
+    </div>
+    <div class="card">
+      <div class="section-label">অন্যান্য আয়</div>
+      <div class="row2">
+        <div class="fg"><label>পরিমাণ (৳)</label><input type="number" id="dOtherInc" placeholder="0" oninput="dailyPreview()"></div>
+        <div class="fg"><label>বিবরণ</label><input type="text" id="dOtherIncLbl" placeholder="যেমন: বোনাস..."></div>
+      </div>
+    </div>`;
+  addDailyCostRow();dailyPreview();
+}
+function addDailyCostRow(cat='',desc='',amt=''){
+  const id='dcr_'+(dCostCount++);
+  const catOpts=data.categories.map(c=>`<option value="${c}" ${c===cat?'selected':''}>${c}</option>`).join('');
+  const row=document.createElement('div');
+  row.id=id;row.className='cost-row-grid';
+  row.innerHTML=`
+    <select><option value="">-- ক্যাটাগরি --</option>${catOpts}</select>
+    <input type="text" placeholder="বিবরণ" value="${desc}">
+    <input type="number" placeholder="৳" value="${amt}" min="0" oninput="dailyPreview()">
+    <button class="btn btn-sm btn-danger" style="padding:8px;justify-content:center" onclick="document.getElementById('${id}').remove();dailyPreview()"><i class="ti ti-trash"></i></button>`;
+  document.getElementById('dCostRows').appendChild(row);
+}
+function getDailyCosts(){
+  return[...document.querySelectorAll('#dCostRows .cost-row-grid')].map(r=>{
+    const cat=r.querySelector('select').value;
+    const desc=r.querySelectorAll('input')[0].value;
+    const amt=parseFloat(r.querySelectorAll('input')[1].value)||0;
+    return{cat,desc,amt};
+  }).filter(c=>c.cat||c.desc||c.amt>0);
+}
+function dailyPreview(){
+  const pid=document.getElementById('dailyProjSel')?.value;
+  const p=projById(pid);
+  const eggs=parseFloat(document.getElementById('dEggs')?.value)||0;
+  const price=parseFloat(document.getElementById('dPrice')?.value)||0;
+  const saleRev=eggs*price;
+  const other=parseFloat(document.getElementById('dOtherInc')?.value)||0;
+  const totalCost=getDailyCosts().reduce((s,c)=>s+c.amt,0);
+  const totalRev=saleRev+other;
+  const profit=totalRev-totalCost;
+  const pctEl=document.getElementById('eggPctPreview');
+  const lc=liveCount(p);
+  if(pctEl&&p&&lc&&eggs>0){
+    const pct=eggPct(eggs,lc);
+    pctEl.innerHTML=`<div style="display:flex;align-items:center;gap:8px">
+      <div class="pct-bar-bg" style="flex:1"><div class="pct-bar-fill" style="width:${Math.min(pct,100)}%;background:${pctColor(pct)}"></div></div>
+      <span class="pct-pill ${pctClass(pct)}">${pct.toFixed(1)}% ডিম</span>
+    </div>
+    <div style="font-size:11px;color:var(--muted);margin-top:3px">${lc}টি পাখি থেকে ${eggs}টি ডিম</div>`;
+  } else if(pctEl){pctEl.innerHTML='';}
+  const card=document.getElementById('dailyPreviewCard');
+  const met=document.getElementById('dailyPreviewMetrics');
+  if(card&&met){
+    card.classList.remove('hidden');
+    met.innerHTML=`<div class="metrics-4" style="margin-bottom:0">
+      <div class="metric"><div class="metric-label">ডিম বিক্রি</div><div class="metric-val green">${fmt(saleRev)} ৳</div></div>
+      <div class="metric"><div class="metric-label">মোট আয়</div><div class="metric-val green">${fmt(totalRev)} ৳</div></div>
+      <div class="metric"><div class="metric-label">মোট খরচ</div><div class="metric-val red">${fmt(totalCost)} ৳</div></div>
+      <div class="metric"><div class="metric-label">লাভ/ক্ষতি</div><div class="metric-val ${profit>=0?'green':'red'}">${fmt(profit)} ৳</div></div>
+    </div>`;
+  }
+}
+function saveDailyEntry(){
+  if(!can('entries')){alert('আপনার এই কাজের অনুমতি নেই!');return;}
+  const pid=document.getElementById('dailyProjSel').value;
+  const date=document.getElementById('dailyDate').value;
+  if(!pid||!date){alert('প্রজেক্ট ও তারিখ দিন!');return;}
+  const eggs=parseFloat(document.getElementById('dEggs')?.value)||0;
+  const price=parseFloat(document.getElementById('dPrice')?.value)||0;
+  const saleNote=document.getElementById('dSaleNote')?.value||'';
+  const other=parseFloat(document.getElementById('dOtherInc')?.value)||0;
+  const otherLbl=document.getElementById('dOtherIncLbl')?.value||'অন্যান্য আয়';
+  const batch=db.batch();
+  const col=fsCol('entries');
+  if(eggs>0&&price>0)batch.set(col.doc(),{projId:pid,type:'income',amount:eggs*price,
+    label:`ডিম বিক্রি (${eggs}টি)${saleNote?' – '+saleNote:''}`,date,cat:'ডিম বিক্রি',source:'egg_sell',eggs,buyerName:saleNote,createdAt:Date.now()});
+  if(other>0)batch.set(col.doc(),{projId:pid,type:'income',amount:other,label:otherLbl,date,cat:'অন্যান্য আয়',source:'other_inc',createdAt:Date.now()});
+  getDailyCosts().forEach(c=>{if(c.amt>0)batch.set(col.doc(),{projId:pid,type:'expense',amount:c.amt,label:c.desc||c.cat||'খরচ',date,cat:c.cat,source:'other_exp',createdAt:Date.now()});});
+  batch.commit();
+  if(saleNote)ensureContact(saleNote,'buyer');
+  logActivity('entries',`দৈনিক এন্ট্রি সেভ (${fmtDate(date)})`);
+  const toast=document.createElement('div');
+  toast.style.cssText='position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:var(--green);color:#fff;padding:10px 20px;border-radius:50px;font-size:13px;z-index:999;font-weight:600';
+  toast.textContent='✅ সেভ হয়েছে!';document.body.appendChild(toast);
+  setTimeout(()=>toast.remove(),2000);
+  dCostCount=0;renderDailyForm();
+}
+
+// ── SUMMARY ───────────────────────────────────────────────────────────────────
+let summaryPeriod='month';
+function setSummaryPeriod(p,el){
+  summaryPeriod=p;
+  document.querySelectorAll('#sumPeriodTabs .ftab').forEach(x=>x.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById('sumMonthWrap').style.display=p==='month'?'block':'none';
+  renderSummary();
+}
+function renderSummaryPage(){
+  const ap=getActiveProject();
+  const wrap=document.getElementById('sumProjWrap');
+  const ps=document.getElementById('sumProjSel');
+  if(!ap){
+    wrap.innerHTML=`<p style="color:var(--red);font-size:13px;margin:0">কোনো প্রজেক্ট সক্রিয় নেই — হোম থেকে একটি প্রজেক্ট বেছে নিন</p>`;
+    ps.innerHTML='';
+  } else {
+    wrap.innerHTML=`<div style="display:flex;align-items:center;gap:8px;background:var(--bg);border-radius:10px;padding:8px 12px">
+      <span style="font-size:20px">${ap.icon}</span>
+      <div style="flex:1"><div style="font-weight:600;font-size:13px">${ap.name}</div><div style="font-size:10px;color:var(--muted)" data-t="activeProjectHint">প্রোফাইল থেকে সক্রিয় প্রজেক্ট পরিবর্তন করুন</div></div>
+    </div>`;
+    ps.innerHTML=`<option value="${ap.id}" selected>${ap.name}</option>`;
+  }
+  const ms=document.getElementById('sumMonthSel');
+  const months=getMonths();
+  ms.innerHTML='<option value="" data-t="allMonths">সব মাস</option>'+months.map(m=>`<option value="${m}">${fmtMonth(m)}</option>`).join('');
+  if(!ap||!months.length){document.getElementById('summaryBody').innerHTML='<div class="empty"><i class="ti ti-chart-off"></i>ডেটা নেই</div>';return;}
+  ms.onchange=renderSummary;renderSummary();
+}
+function currentSummaryEntries(){
+  const pid=document.getElementById('sumProjSel').value;
+  const month=document.getElementById('sumMonthSel').value;
+  let entries=[...data.entries];
+  if(pid)entries=entries.filter(e=>e.projId===pid);
+  const today=todayStr();
+  if(summaryPeriod==='today')entries=entries.filter(e=>e.date===today);
+  else if(summaryPeriod==='week'){
+    const weekAgo=addDays(today,-6);
+    entries=entries.filter(e=>e.date>=weekAgo&&e.date<=today);
+  } else if(summaryPeriod==='month'){
+    if(month)entries=entries.filter(e=>e.date.slice(0,7)===month);
+  } // 'all' → no extra filter
+  return entries;
+}
+function renderSummary(){
+  const pid=document.getElementById('sumProjSel').value;
+  const entries=currentSummaryEntries();
+  if(!entries.length){document.getElementById('summaryBody').innerHTML='<div class="empty">এই ফিল্টারে ডেটা নেই</div>';return;}
+  const inc=entries.filter(e=>e.type==='income').reduce((s,e)=>s+e.amount,0);
+  const exp=entries.filter(e=>e.type==='expense').reduce((s,e)=>s+e.amount,0);
+  const profit=inc-exp;
+  const days=new Set(entries.map(e=>e.date)).size;
+  const totalEggs=entries.filter(e=>e.type==='income').reduce((s,e)=>s+(e.eggs||0),0);
+
+  const projEggPctRows=data.projects.filter(p=>!pid||p.id===pid).map(p=>{
+    const pe=entries.filter(e=>e.projId===p.id&&e.type==='income');
+    const pInc=entries.filter(e=>e.projId===p.id&&e.type==='income').reduce((s,e)=>s+e.amount,0);
+    const pExp=entries.filter(e=>e.projId===p.id&&e.type==='expense').reduce((s,e)=>s+e.amount,0);
+    const pp=pInc-pExp;
+    const pEggs=pe.reduce((s,e)=>s+(e.eggs||0),0);
+    const pDays=[...new Set(pe.filter(e=>e.eggs>0).map(e=>e.date))].length;
+    const avgPct=liveCount(p)&&pDays?eggPct(pEggs/pDays,liveCount(p)):null;
+    const pctCell=avgPct!==null?`<span class="pct-pill ${pctClass(avgPct)}">${avgPct.toFixed(1)}%</span>`:'—';
+    return`<tr><td>${p.icon} ${p.name}</td><td style="text-align:right">${pctCell}</td><td class="green" style="text-align:right">${fmt(pInc)} ৳</td><td class="red" style="text-align:right">${fmt(pExp)} ৳</td><td class="${pp>=0?'green':'red'}" style="text-align:right;font-weight:600">${fmt(pp)} ৳</td></tr>`;
+  }).join('');
+
+  // Income breakdown by source
+  const incSrcTotals={};
+  entries.filter(e=>e.type==='income').forEach(e=>{const k=e.source||'other_inc';incSrcTotals[k]=(incSrcTotals[k]||0)+e.amount;});
+  const incSrcRows=Object.entries(incSrcTotals).sort((a,b)=>b[1]-a[1]).map(([k,v])=>{
+    const s=INCOME_SOURCES.find(x=>x.id===k)||{icon:'💰',label:k};
+    return`<tr><td>${s.icon} ${s.label}</td><td class="green" style="text-align:right">${fmt(v)} ৳</td><td style="text-align:right;color:var(--muted)">${inc>0?((v/inc)*100).toFixed(1):0}%</td></tr>`;
+  }).join('');
+
+  const catTotals={};
+  entries.filter(e=>e.type==='expense').forEach(e=>{const k=e.cat||'অন্যান্য';catTotals[k]=(catTotals[k]||0)+e.amount;});
+  const catRows=Object.entries(catTotals).sort((a,b)=>b[1]-a[1]).map(([k,v])=>`<tr><td>${k}</td><td class="red" style="text-align:right">${fmt(v)} ৳</td><td style="text-align:right;color:var(--muted)">${exp>0?((v/exp)*100).toFixed(1):0}%</td></tr>`).join('');
+
+  const avgEggsPerDay=days?totalEggs/days:0;
+  const totalBirds=data.projects.filter(p=>!pid||p.id===pid).reduce((s,p)=>s+liveCount(p),0);
+  const overallPct=totalBirds&&avgEggsPerDay?eggPct(avgEggsPerDay,totalBirds):null;
+  const eggPctBlock=overallPct!==null?`
+    <div class="card">
+      <div class="section-label">🥚 মাসিক ডিম উৎপাদন হার</div>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+        <span style="font-size:13px">গড় উৎপাদন হার</span>
+        <span class="pct-pill ${pctClass(overallPct)}" style="font-size:13px;padding:4px 12px">${overallPct.toFixed(1)}%</span>
+      </div>
+      <div class="pct-bar-bg" style="height:10px"><div class="pct-bar-fill" style="width:${Math.min(overallPct,100)}%;background:${pctColor(overallPct)}"></div></div>
+      <div style="font-size:11px;color:var(--muted);margin-top:6px">মোট ডিম: ${fmt(totalEggs)} টি · ${days} দিনে · গড় ${fmt(avgEggsPerDay)} টি/দিন</div>
+    </div>`:'';
+
+  document.getElementById('summaryBody').innerHTML=`
+    <div class="metrics-4">
+      <div class="metric"><div class="metric-label">মোট আয়</div><div class="metric-val green">${fmt(inc)} ৳</div></div>
+      <div class="metric"><div class="metric-label">মোট খরচ</div><div class="metric-val red">${fmt(exp)} ৳</div></div>
+      <div class="metric"><div class="metric-label">নীট লাভ</div><div class="metric-val ${profit>=0?'green':'red'}">${fmt(profit)} ৳</div></div>
+      <div class="metric"><div class="metric-label">মোট ডিম</div><div class="metric-val">${fmt(totalEggs)} টি</div></div>
+    </div>
+    <div class="row3" style="margin-bottom:12px">
+      <div class="metric"><div class="metric-label">হিসাবের দিন</div><div class="metric-val">${days} দিন</div></div>
+      <div class="metric"><div class="metric-label">গড় দৈনিক আয়</div><div class="metric-val green">${days?fmt(inc/days):0} ৳</div></div>
+      <div class="metric"><div class="metric-label">গড় দৈনিক লাভ</div><div class="metric-val ${profit>=0?'green':'red'}">${days?fmt(profit/days):0} ৳</div></div>
+    </div>
+    ${eggPctBlock}
+    <div class="card">
+      <div class="section-label">📈 আয়ের উৎসভিত্তিক বিভাজন</div>
+      <table class="stbl"><thead><tr><th>উৎস</th><th style="text-align:right">টাকা</th><th style="text-align:right">%</th></tr></thead>
+      <tbody>${incSrcRows||'<tr><td colspan="3" style="color:var(--muted);padding:12px">ডেটা নেই</td></tr>'}</tbody></table>
+    </div>
+    <div class="card">
+      <div class="section-label">প্রজেক্টভিত্তিক তুলনা</div>
+      <table class="stbl"><thead><tr><th>প্রজেক্ট</th><th style="text-align:right">ডিম%</th><th style="text-align:right">আয়</th><th style="text-align:right">খরচ</th><th style="text-align:right">লাভ</th></tr></thead>
+      <tbody>${projEggPctRows||'<tr><td colspan="5" style="color:var(--muted);padding:12px">ডেটা নেই</td></tr>'}</tbody></table>
+    </div>
+    <div class="card">
+      <div class="section-label">খরচের বিভাজন</div>
+      <table class="stbl"><thead><tr><th>ক্যাটাগরি</th><th style="text-align:right">টাকা</th><th style="text-align:right">%</th></tr></thead>
+      <tbody>${catRows||'<tr><td colspan="3" style="color:var(--muted);padding:12px">কোনো খরচ নেই</td></tr>'}</tbody></table>
+    </div>`;
+}
+
+// ── FULL REPORT (PDF / JPG EXPORT) ─────────────────────────────────────────────
+// Builds a complete, all-project & all-month income/expense report as an
+// off-screen printable card, then rasterizes it via html2canvas for JPG/PDF export.
+function buildFullReportNode(){
+  const months=getMonths();
+  const totalInc=data.entries.filter(e=>e.type==='income').reduce((s,e)=>s+e.amount,0);
+  const totalExp=data.entries.filter(e=>e.type==='expense').reduce((s,e)=>s+e.amount,0);
+  const totalProfit=totalInc-totalExp;
+
+  const monthRows=months.map(m=>{
+    const me=data.entries.filter(e=>e.date.slice(0,7)===m);
+    const inc=me.filter(e=>e.type==='income').reduce((s,e)=>s+e.amount,0);
+    const exp=me.filter(e=>e.type==='expense').reduce((s,e)=>s+e.amount,0);
+    const pf=inc-exp;
+    return`<tr><td style="padding:7px 10px;border-bottom:1px solid #e5e7eb">${fmtMonth(m)}</td>
+      <td style="padding:7px 10px;border-bottom:1px solid #e5e7eb;text-align:right;color:#16a34a">${fmt(inc)} ৳</td>
+      <td style="padding:7px 10px;border-bottom:1px solid #e5e7eb;text-align:right;color:#dc2626">${fmt(exp)} ৳</td>
+      <td style="padding:7px 10px;border-bottom:1px solid #e5e7eb;text-align:right;font-weight:700;color:${pf>=0?'#16a34a':'#dc2626'}">${fmt(pf)} ৳</td></tr>`;
+  }).join('');
+
+  const projRows=data.projects.map(p=>{
+    const pe=data.entries.filter(e=>e.projId===p.id);
+    const inc=pe.filter(e=>e.type==='income').reduce((s,e)=>s+e.amount,0);
+    const exp=pe.filter(e=>e.type==='expense').reduce((s,e)=>s+e.amount,0);
+    const pf=inc-exp;
+    const eggsE=pe.filter(e=>e.type==='income'&&e.eggs>0);
+    const totalEggs=eggsE.reduce((s,e)=>s+(e.eggs||0),0);
+    const dayCount=[...new Set(eggsE.map(e=>e.date))].length;
+    const avgPct=liveCount(p)&&dayCount?eggPct(totalEggs/dayCount,liveCount(p)):null;
+    return`<tr><td style="padding:7px 10px;border-bottom:1px solid #e5e7eb">${p.icon} ${p.name}${data.activeProjectId===p.id?' ⭐':''}</td>
+      <td style="padding:7px 10px;border-bottom:1px solid #e5e7eb;text-align:right">${avgPct!==null?avgPct.toFixed(1)+'%':'—'}</td>
+      <td style="padding:7px 10px;border-bottom:1px solid #e5e7eb;text-align:right;color:#16a34a">${fmt(inc)} ৳</td>
+      <td style="padding:7px 10px;border-bottom:1px solid #e5e7eb;text-align:right;color:#dc2626">${fmt(exp)} ৳</td>
+      <td style="padding:7px 10px;border-bottom:1px solid #e5e7eb;text-align:right;font-weight:700;color:${pf>=0?'#16a34a':'#dc2626'}">${fmt(pf)} ৳</td></tr>`;
+  }).join('');
+
+  const node=document.createElement('div');
+  node.style.cssText='position:fixed;left:-99999px;top:0;width:760px;background:#ffffff;color:#111827;font-family:"Hind Siliguri",Arial,sans-serif;padding:28px;box-sizing:border-box';
+  node.innerHTML=`
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:4px">
+      <div style="font-size:26px">🐔</div>
+      <div><div style="font-size:19px;font-weight:800">পোল্ট্রি ট্র্যাকার — সম্পূর্ণ আর্থিক প্রতিবেদন</div>
+      <div style="font-size:12px;color:#6b7280">তৈরি হয়েছে: ${fmtDate(todayStr())}</div></div>
+    </div>
+    <div style="display:flex;gap:10px;margin:18px 0">
+      <div style="flex:1;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;padding:12px;text-align:center">
+        <div style="font-size:11px;color:#166534">মোট আয়</div><div style="font-size:17px;font-weight:800;color:#16a34a">${fmt(totalInc)} ৳</div>
+      </div>
+      <div style="flex:1;background:#fef2f2;border:1px solid #fecaca;border-radius:10px;padding:12px;text-align:center">
+        <div style="font-size:11px;color:#991b1b">মোট খরচ</div><div style="font-size:17px;font-weight:800;color:#dc2626">${fmt(totalExp)} ৳</div>
+      </div>
+      <div style="flex:1;background:#eff6ff;border:1px solid #bfdbfe;border-radius:10px;padding:12px;text-align:center">
+        <div style="font-size:11px;color:#1e3a8a">নীট লাভ</div><div style="font-size:17px;font-weight:800;color:${totalProfit>=0?'#16a34a':'#dc2626'}">${fmt(totalProfit)} ৳</div>
+      </div>
+    </div>
+    <div style="font-size:14px;font-weight:700;margin:16px 0 8px">📅 মাসভিত্তিক বিভাজন</div>
+    <table style="width:100%;border-collapse:collapse;font-size:12.5px">
+      <thead><tr style="background:#f3f4f6">
+        <th style="padding:7px 10px;text-align:left">মাস</th><th style="padding:7px 10px;text-align:right">আয়</th>
+        <th style="padding:7px 10px;text-align:right">খরচ</th><th style="padding:7px 10px;text-align:right">লাভ/ক্ষতি</th>
+      </tr></thead><tbody>${monthRows||'<tr><td colspan="4" style="padding:12px;color:#9ca3af">ডেটা নেই</td></tr>'}</tbody>
+    </table>
+    <div style="font-size:14px;font-weight:700;margin:20px 0 8px">🏠 প্রজেক্টভিত্তিক বিভাজন</div>
+    <table style="width:100%;border-collapse:collapse;font-size:12.5px">
+      <thead><tr style="background:#f3f4f6">
+        <th style="padding:7px 10px;text-align:left">প্রজেক্ট</th><th style="padding:7px 10px;text-align:right">ডিম%</th>
+        <th style="padding:7px 10px;text-align:right">আয়</th><th style="padding:7px 10px;text-align:right">খরচ</th><th style="padding:7px 10px;text-align:right">লাভ/ক্ষতি</th>
+      </tr></thead><tbody>${projRows||'<tr><td colspan="5" style="padding:12px;color:#9ca3af">ডেটা নেই</td></tr>'}</tbody>
+    </table>
+    <div style="margin-top:18px;font-size:10.5px;color:#9ca3af;text-align:center">পোল্ট্রি ট্র্যাকার অ্যাপ থেকে স্বয়ংক্রিয়ভাবে তৈরি · ⭐ = সক্রিয় প্রজেক্ট</div>`;
+  document.body.appendChild(node);
+  return node;
+}
+
+// ── CSV EXPORT (currently filtered entries) ────────────────────────────────────
+function downloadCSV(){
+  const entries=[...currentSummaryEntries()].sort((a,b)=>a.date.localeCompare(b.date));
+  if(!entries.length){alert('এক্সপোর্ট করার মতো কোনো ডেটা নেই!');return;}
+  const headers=['তারিখ','প্রজেক্ট','ধরন','ক্যাটাগরি/উৎস','বিবরণ','পরিমাণ','ডিম','সাপ্লায়ার','চালান নং','পরিমাণ(একক)','একক','একক মূল্য','বকেয়া','পেমেন্ট স্ট্যাটাস','নোট'];
+  const rows=entries.map(e=>{
+    const p=projById(e.projId);
+    const csvSafe=v=>`"${String(v??'').replace(/"/g,'""')}"`;
+    return[e.date,p?p.name:'',e.type==='income'?'আয়':'খরচ',e.cat||'',e.label,e.amount,e.eggs||0,
+      e.supplier||'',e.invoiceNo||'',e.qty||'',e.unit||'',e.unitPrice||'',e.dueAmount||'',e.paymentStatus||'',e.note||''
+    ].map(csvSafe).join(',');
+  });
+  const csv='\uFEFF'+[headers.map(h=>`"${h}"`).join(','),...rows].join('\n');
+  const blob=new Blob([csv],{type:'text/csv;charset=utf-8;'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download='poultry-report-'+todayStr()+'.csv';
+  a.click();
+}
+
+// ── ডিম বিক্রির রসিদ/ইনভয়েস ──────────────────────────────────────────────────
+function downloadReceipt(eid){
+  const e=data.entries.find(x=>x.id===eid);
+  if(!e){alert('এন্ট্রি খুঁজে পাওয়া যায়নি!');return;}
+  if(typeof html2canvas==='undefined'){alert('রসিদ তৈরির লাইব্রেরি লোড হয়নি। ইন্টারনেট সংযোগ পরীক্ষা করুন।');return;}
+  const p=projById(e.projId);
+  const dozens=e.eggs?Math.floor(e.eggs/12):0;
+  const remEggs=e.eggs?e.eggs%12:0;
+  const rate=e.eggs?(e.amount/e.eggs):0;
+  const node=document.createElement('div');
+  node.style.cssText='position:fixed;left:-9999px;top:0;width:420px;background:#fff;padding:28px;font-family:Arial,sans-serif;color:#111';
+  node.innerHTML=`
+    <div style="text-align:center;margin-bottom:16px">
+      <div style="font-size:22px;font-weight:700">🐔 ${currentFarmDoc?currentFarmDoc.name:'পোল্ট্রি ফার্ম'}</div>
+      ${p?`<div style="font-size:12px;color:#666">${p.name}</div>`:''}
+      <div style="font-size:14px;font-weight:600;margin-top:8px;border-top:2px solid #333;border-bottom:2px solid #333;padding:6px 0">ডিম বিক্রির রসিদ</div>
+    </div>
+    <table style="width:100%;font-size:13px;border-collapse:collapse;margin-bottom:14px">
+      <tr><td style="padding:4px 0;color:#666">তারিখ</td><td style="padding:4px 0;text-align:right;font-weight:600">${fmtDate(e.date)}</td></tr>
+      <tr><td style="padding:4px 0;color:#666">ক্রেতা</td><td style="padding:4px 0;text-align:right;font-weight:600">${e.buyerName||'—'}</td></tr>
+      <tr><td style="padding:4px 0;color:#666">মোট ডিম</td><td style="padding:4px 0;text-align:right;font-weight:600">${fmt(e.eggs)} টি${dozens?` (${dozens} ডজন${remEggs?' '+remEggs+' টি':''})`:''}</td></tr>
+      <tr><td style="padding:4px 0;color:#666">প্রতি ডিমের দাম</td><td style="padding:4px 0;text-align:right;font-weight:600">${rate.toFixed(2)} ৳</td></tr>
+    </table>
+    <div style="border-top:2px dashed #999;padding-top:10px;display:flex;justify-content:space-between;align-items:center">
+      <span style="font-size:15px;font-weight:700">সর্বমোট</span>
+      <span style="font-size:20px;font-weight:800">${fmt(e.amount)} ৳</span>
+    </div>
+    <div style="text-align:center;margin-top:22px;font-size:11px;color:#999">ধন্যবাদান্তে — ${currentFarmDoc?currentFarmDoc.name:''}</div>
+  `;
+  document.body.appendChild(node);
+  html2canvas(node,{scale:2,backgroundColor:'#ffffff'}).then(canvas=>{
+    node.remove();
+    const {jsPDF}=window.jspdf;
+    const pdf=new jsPDF('p','mm','a5');
+    const pageW=pdf.internal.pageSize.getWidth();
+    const imgH=canvas.height*pageW/canvas.width;
+    pdf.addImage(canvas.toDataURL('image/jpeg',0.95),'JPEG',0,10,pageW,imgH);
+    pdf.save('rosid-'+e.date+(e.buyerName?'-'+e.buyerName.replace(/\s+/g,'_'):'')+'.pdf');
+  }).catch(()=>{node.remove();alert('রসিদ তৈরি করতে সমস্যা হয়েছে।');});
+}
+
+function downloadFullReport(kind){
+  if(typeof html2canvas==='undefined'){alert('রিপোর্ট তৈরির লাইব্রেরি লোড হয়নি। ইন্টারনেট সংযোগ পরীক্ষা করুন।');return;}
+  const status=document.getElementById('reportGenStatus');
+  if(status)status.textContent='রিপোর্ট তৈরি হচ্ছে...';
+  const node=buildFullReportNode();
+  html2canvas(node,{scale:2,backgroundColor:'#ffffff'}).then(canvas=>{
+    node.remove();
+    const fname='poultry-report-'+todayStr();
+    if(kind==='jpg'){
+      const a=document.createElement('a');
+      a.href=canvas.toDataURL('image/jpeg',0.95);
+      a.download=fname+'.jpg';
+      document.body.appendChild(a);a.click();a.remove();
+    } else {
+      const {jsPDF}=window.jspdf;
+      const pdf=new jsPDF('p','mm','a4');
+      const pageW=pdf.internal.pageSize.getWidth();
+      const imgH=canvas.height*pageW/canvas.width;
+      const imgData=canvas.toDataURL('image/jpeg',0.95);
+      let heightLeft=imgH,position=0;
+      pdf.addImage(imgData,'JPEG',0,position,pageW,imgH);
+      heightLeft-=pdf.internal.pageSize.getHeight();
+      while(heightLeft>0){
+        position=heightLeft-imgH;
+        pdf.addPage();
+        pdf.addImage(imgData,'JPEG',0,position,pageW,imgH);
+        heightLeft-=pdf.internal.pageSize.getHeight();
+      }
+      pdf.save(fname+'.pdf');
+    }
+    if(status)status.textContent='✅ ডাউনলোড সম্পন্ন হয়েছে!';
+    setTimeout(()=>{if(status)status.textContent='';},3000);
+  }).catch(err=>{
+    node.remove();
+    if(status)status.textContent='';
+    alert('রিপোর্ট তৈরি করতে সমস্যা হয়েছে। আবার চেষ্টা করুন।');
+  });
+}
+
+// ── VACCINE ───────────────────────────────────────────────────────────────────
+// ── স্ট্যান্ডার্ড ভ্যাকসিন শিডিউল টেমপ্লেট (বয়স/দিন অনুযায়ী) ──────────────────────
+// সাধারণ নির্দেশিকা হিসেবে — এলাকা ও হ্যাচারিভেদে সামান্য পার্থক্য হতে পারে,
+// নিশ্চিত হতে স্থানীয় ভেটেরিনারিয়ান/হ্যাচারির পরামর্শ নেওয়াই ভালো।
+const VACCINE_SCHEDULES={
+  chicken:[ // লেয়ার মুরগি (ডিম পাড়া মুরগি)
+    {day:6, name:'রানীক্ষেত + ব্রংকাইটিস (ND+IB)', method:'চোখে ড্রপ'},
+    {day:10, name:'গামবোরো (IBD) — ১ম ডোজ', method:'পানিতে'},
+    {day:19, name:'গামবোরো (IBD) — ২য় ডোজ', method:'পানিতে'},
+    {day:21, name:'রানীক্ষেত (ND Lasota)', method:'পানিতে'},
+    {day:28, name:'ফাউল পক্স', method:'পাখার নিচে ইনজেকশন'},
+    {day:39, name:'রানীক্ষেত বুস্টার (ND Lasota)', method:'পানিতে'},
+    {day:56, name:'করাইজা (Coryza)', method:'ইনজেকশন'},
+    {day:77, name:'রানীক্ষেত + ব্রংকাইটিস বুস্টার', method:'পানিতে'},
+    {day:98, name:'করাইজা বুস্টার', method:'ইনজেকশন'},
+    {day:112, name:'ND+IB+EDS (ডিম পাড়ার আগে সবচেয়ে জরুরি ডোজ)', method:'ইনজেকশন'},
+  ],
+  duck:[
+    {day:15, name:'হাঁসের প্লেগ (Duck Plague)', method:'ইনজেকশন'},
+    {day:180, name:'হাঁসের প্লেগ বুস্টার (৬ মাস পর পর)', method:'ইনজেকশন'},
+  ],
+  quail:[
+    {day:8, name:'রানীক্ষেত (ND)', method:'চোখে ড্রপ/পানিতে'},
+  ],
+  other:[]
+};
+function ageInDays(project){
+  if(!project||!project.startDate)return null;
+  return daysDiff(project.startDate,todayStr());
+}
+function vaccScheduleStatus(project){
+  const sched=VACCINE_SCHEDULES[project.birdType]||[];
+  if(!sched.length)return[];
+  const age=ageInDays(project);
+  const given=data.vaccines.filter(v=>v.projId===project.id);
+  const today=todayStr();
+  return sched.map(item=>{
+    const done=given.find(v=>v.name.includes(item.name.split(' ')[0])||item.name.includes(v.name));
+    let status='future';
+    if(done)status='done';
+    else if(age!==null){
+      if(age>item.day+5)status='overdue';
+      else if(age>=item.day)status='due';
+      else if(age>=item.day-3)status='soon';
+    }
+    const dueDate=project.startDate?addDays(project.startDate,item.day):null;
+    return{...item,status,dueDate,doneRecord:done};
+  });
+}
+function renderVaccScheduleWrap(){
+  const el=document.getElementById('vaccScheduleWrap');
+  if(!el)return;
+  const ap=getActiveProject();
+  if(!ap||!VACCINE_SCHEDULES[ap.birdType]||!VACCINE_SCHEDULES[ap.birdType].length){el.innerHTML='';return;}
+  if(!ap.startDate){
+    el.innerHTML=`<div class="card" style="padding:12px 14px;margin-bottom:10px"><div style="font-size:12px;color:var(--muted)"><i class="ti ti-info-circle"></i> শিডিউল দেখতে প্রজেক্ট এডিট করে "শুরুর তারিখ" (বাচ্চা আসার দিন) বসান</div></div>`;
+    return;
+  }
+  const rows=vaccScheduleStatus(ap);
+  const STATUS_STYLE={
+    done:{bg:'var(--green-bg)',color:'var(--green-text)',label:'✓ দেওয়া হয়েছে'},
+    overdue:{bg:'var(--red-bg)',color:'var(--red-text)',label:'⚠️ মেয়াদোত্তীর্ণ'},
+    due:{bg:'var(--red-bg)',color:'var(--red-text)',label:'এখনই দিন'},
+    soon:{bg:'#fef3c7',color:'#b45309',label:'শীঘ্রই'},
+    future:{bg:'var(--bg)',color:'var(--muted)',label:'পরে'}
+  };
+  el.innerHTML=`<div class="card" style="margin-bottom:10px">
+    <div style="font-weight:600;font-size:13px;margin-bottom:2px">📋 প্রস্তাবিত ভ্যাকসিন শিডিউল</div>
+    <div style="font-size:11px;color:var(--muted);margin-bottom:10px">${ap.name} — বয়স ${ageInDays(ap)} দিন (সাধারণ নির্দেশিকা, এলাকাভেদে সামান্য পরিবর্তন হতে পারে)</div>
+    ${rows.map(r=>{
+      const s=STATUS_STYLE[r.status];
+      return`<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border)">
+        <div style="width:44px;text-align:center;font-size:11px;color:var(--muted);flex-shrink:0">দিন ${r.day}</div>
+        <div style="flex:1;min-width:0">
+          <div style="font-size:12.5px;font-weight:500">${r.name}</div>
+          <div style="font-size:10px;color:var(--muted)">${r.method}${r.dueDate&&r.status!=='done'?' · '+fmtDateShort(r.dueDate):''}</div>
+        </div>
+        ${r.status==='done'
+          ?`<span style="font-size:10px;background:${s.bg};color:${s.color};padding:3px 8px;border-radius:50px;white-space:nowrap">${s.label}</span>`
+          :`<button class="btn btn-sm" data-perm="vaccine" style="background:${s.bg};color:${s.color};border-color:transparent;white-space:nowrap;font-size:11px" onclick="quickLogScheduleVaccine('${ap.id}','${r.name.replace(/'/g,"\\'")}')">${s.label}</button>`}
+      </div>`;
+    }).join('')}
+  </div>`;
+  applyPermissionUI();
+}
+function quickLogScheduleVaccine(pid,name){
+  openModal('addVaccine');
+  setTimeout(()=>{
+    const nameSel=document.getElementById('vNameSel');
+    if(nameSel){
+      const match=[...nameSel.options].find(o=>name.includes(o.value)||o.value.includes(name.split(' ')[0]));
+      nameSel.value=match?match.value:'custom';
+      nameSel.dispatchEvent(new Event('change'));
+      if(!match){const cust=document.getElementById('vNameCustom');if(cust)cust.value=name;}
+    }
+    const projSel=document.getElementById('vProjSel');
+    if(projSel)projSel.value=pid;
+  },50);
+}
+
+function renderVaccinePage(){
+  renderVaccineAlertBanner();
+  renderVaccScheduleWrap();
+  const wrap=document.getElementById('vaccActiveProjWrap');
+  const ap=getActiveProject();
+  if(!data.projects.length){
+    wrap.innerHTML=`<div style="text-align:center;padding:20px;color:var(--muted)">কোনো প্রজেক্ট নেই — আগে একটি প্রজেক্ট তৈরি করুন</div>`;
+  } else if(!ap){
+    wrap.innerHTML=`<div style="text-align:center;padding:20px;color:var(--muted)">কোনো প্রজেক্ট সক্রিয় নেই — হোম থেকে একটি প্রজেক্ট বেছে নিন</div>`;
+  } else {
+    const vs=[...data.vaccines.filter(v=>v.projId===ap.id)].sort((a,b)=>b.givenDate.localeCompare(a.givenDate));
+    wrap.innerHTML=`
+      <div class="card" style="display:flex;align-items:center;gap:10px;padding:12px 14px">
+        <span style="font-size:24px">${ap.icon}</span>
+        <div style="flex:1"><div style="font-weight:600;font-size:14px">${ap.name}</div><div style="font-size:11px;color:var(--muted)">${vs.length} টি রেকর্ড</div></div>
+      </div>
+      <div class="section-label">রেকর্ড</div>
+      ${vs.length?vs.map(v=>vaccRowHtml(v)).join(''):'<div class="empty" style="padding:16px"><i class="ti ti-vaccine"></i>কোনো ভ্যাকসিন রেকর্ড নেই</div>'}`;
+  }
+  // vaccines not tied to any project
+  const noProj=data.vaccines.filter(v=>!v.projId);
+  const npWrap=document.getElementById('vaccNoProjWrap');
+  if(noProj.length){
+    npWrap.innerHTML=`<div class="section-label" style="margin-top:14px">সাধারণ ভ্যাকসিন রেকর্ড</div>
+      <div class="card" style="padding:10px 14px">${noProj.map(v=>vaccRowHtml(v)).join('')}</div>`;
+  } else npWrap.innerHTML='';
+}
+
+function renderVaccineAlertBanner(){
+  const today=todayStr();
+  const upcoming=data.vaccines.filter(v=>v.nextDate&&v.nextDate>=today&&daysDiff(today,v.nextDate)<=14);
+  const overdue=data.vaccines.filter(v=>v.nextDate&&v.nextDate<today);
+  const upcomingEl=document.getElementById('vaccUpcoming');
+  if(overdue.length){
+    upcomingEl.innerHTML=`<div class="notif-banner notif-overdue">
+      <div style="font-weight:600;color:var(--red);margin-bottom:8px">⚠️ মেয়াদোত্তীর্ণ ভ্যাকসিন (${overdue.length}টি)</div>
+      ${overdue.map(v=>{const p=projById(v.projId);return`<div style="font-size:13px;margin-bottom:4px">💉 ${v.name} ${p?'· '+p.name:''} — <span class="next-due">${fmtDateShort(v.nextDate)} (${daysDiff(v.nextDate,today)} দিন আগে)</span></div>`;}).join('')}
+    </div>`;
+  } else if(upcoming.length){
+    upcomingEl.innerHTML=`<div class="notif-banner notif-upcoming">
+      <div style="font-weight:600;color:var(--orange);margin-bottom:8px">📅 শীঘ্রই ভ্যাকসিন দিন (${upcoming.length}টি)</div>
+      ${upcoming.map(v=>{const p=projById(v.projId);return`<div style="font-size:13px;margin-bottom:4px">💉 ${v.name} ${p?'· '+p.name:''} — <span class="next-soon">${fmtDateShort(v.nextDate)} (${daysDiff(today,v.nextDate)} দিন পরে)</span></div>`;}).join('')}
+    </div>`;
+  } else {upcomingEl.innerHTML='';}
+  refreshVaccineBadge();
+}
+
+function vaccRowHtml(v){
+  const today=todayStr();
+  let nextHtml='';
+  if(v.nextDate){
+    const diff=daysDiff(today,v.nextDate);
+    if(v.nextDate<today) nextHtml=`<span class="next-due">মেয়াদ শেষ ${Math.abs(diff)} দিন আগে</span>`;
+    else if(diff<=14) nextHtml=`<span class="next-soon">আর ${diff} দিন পরে</span>`;
+    else nextHtml=`<span class="next-ok">${fmtDateShort(v.nextDate)}</span>`;
+  }
+  return`<div class="vacc-item">
+    <div class="vacc-dot">💉</div>
+    <div class="vacc-info">
+      <div class="vacc-name">${v.name}</div>
+      <div class="vacc-meta">দেওয়া হয়েছে: ${fmtDate(v.givenDate)}${v.dose?' · '+v.dose:''}${v.cost?' · '+fmt(v.cost)+' ৳':''}</div>
+      ${v.nextDate?`<div class="vacc-next">পরবর্তী: ${nextHtml}</div>`:''}
+      ${v.note?`<div style="font-size:11px;color:var(--muted);margin-top:2px">${v.note}</div>`:''}
+    </div>
+    <div style="display:flex;gap:4px">
+      <button class="entry-edit" onclick="editVaccine('${v.id}')"><i class="ti ti-pencil" style="font-size:12px"></i></button>
+      <button class="entry-del" onclick="deleteVaccine('${v.id}')"><i class="ti ti-trash" style="font-size:13px"></i></button>
+    </div>
+  </div>`;
+}
+
+// project clicked -> show its vaccine details + let user add a new record for it
+
+function showAddVaccineModal(editId,prefProjId){
+  const ev=editId?data.vaccines.find(v=>v.id===editId):null;
+  const fixedPid=prefProjId||(ev?ev.projId:'')||data.activeProjectId;
+  const projOpts=data.projects.map(p=>`<option value="${p.id}" ${p.id===fixedPid?'selected':''}>${p.icon} ${p.name}</option>`).join('');
+  const vaccOpts=DEFAULT_VACCINES.map(v=>`<option value="${v}" ${ev&&ev.name===v?'selected':''}>${v}</option>`).join('');
+  const today=new Date().toISOString().split('T')[0];
+  document.getElementById('modalContent').innerHTML=`
+    <div class="modal-title"><span>${ev?'ভ্যাকসিন সম্পাদনা':'💉 ভ্যাকসিন রেকর্ড যোগ করুন'}</span><button class="btn btn-sm" onclick="closeModalDirect()"><i class="ti ti-x"></i></button></div>
+    <div class="fg"><label>প্রজেক্ট</label>${data.projects.length?`<select id="vProjSel">${projOpts}</select>`:'<p style="color:var(--muted);font-size:13px">প্রজেক্ট ছাড়াও যোগ করা যাবে</p>'}</div>
+    <div class="fg"><label>ভ্যাকসিনের নাম *</label>
+      <select id="vNameSel" onchange="document.getElementById('vNameCustom').style.display=this.value==='custom'?'block':'none'">
+        ${vaccOpts}<option value="custom">অন্য (নিজে লিখুন)</option>
+      </select>
+      <input type="text" id="vNameCustom" placeholder="ভ্যাকসিনের নাম লিখুন..." style="display:none;margin-top:8px" value="${ev&&!DEFAULT_VACCINES.includes(ev.name)?ev.name:''}">
+    </div>
+    <div class="row2">
+      <div class="fg"><label>দেওয়ার তারিখ *</label><input type="date" id="vGivenDate" value="${ev?ev.givenDate:today}"></div>
+      <div class="fg"><label>ডোজ / পরিমাণ</label><input type="text" id="vDose" placeholder="যেমন: ১ম ডোজ" value="${ev?ev.dose||'':''}"></div>
+    </div>
+    <div class="row2">
+      <div class="fg"><label>খরচ (৳)</label><input type="number" id="vCost" min="0" placeholder="0" value="${ev?ev.cost||'':''}"></div>
+      <div class="fg"><label>কতদিন পর পরবর্তী ডোজ</label><input type="number" id="vRepeatDays" min="0" placeholder="যেমন: 21" value="${ev?ev.repeatDays||'':''}"></div>
+    </div>
+    <div class="fg"><label>পরবর্তী ডোজের তারিখ (ফাঁকা রাখলে উপরের ঘর থেকে হিসাব হবে)</label><input type="date" id="vNextDate" value="${ev?ev.nextDate||'':''}"></div>
+    <div class="fg"><label>নোট</label><textarea id="vNote" rows="2" placeholder="পার্শ্বপ্রতিক্রিয়া, পর্যবেক্ষণ ইত্যাদি...">${ev?ev.note||'':''}</textarea></div>
+    <button class="btn btn-purple btn-full" onclick="saveVaccine('${editId||''}')"><i class="ti ti-device-floppy"></i> ${ev?'আপডেট':'সেভ'} করুন</button>`;
+  document.getElementById('modalOverlay').classList.remove('hidden');
+}
+
+function editVaccine(vid){showAddVaccineModal(vid);document.getElementById('modalOverlay').classList.remove('hidden');}
+
+function saveVaccine(editId){
+  if(!can('vaccine')){alert('আপনার এই কাজের অনুমতি নেই!');return;}
+  const nameEl=document.getElementById('vNameSel');
+  const name=nameEl.value==='custom'?document.getElementById('vNameCustom').value.trim():nameEl.value;
+  if(!name){alert('ভ্যাকসিনের নাম দিন!');return;}
+  const givenDate=document.getElementById('vGivenDate').value;
+  if(!givenDate){alert('তারিখ দিন!');return;}
+  const repeatDays=parseInt(document.getElementById('vRepeatDays').value)||0;
+  let nextDate=document.getElementById('vNextDate').value||'';
+  if(!nextDate&&repeatDays>0)nextDate=addDays(givenDate,repeatDays);
+  const vacc={
+    projId:document.getElementById('vProjSel')?.value||'',
+    name,givenDate,
+    dose:document.getElementById('vDose').value.trim(),
+    cost:parseFloat(document.getElementById('vCost').value)||0,
+    repeatDays,
+    nextDate,
+    note:document.getElementById('vNote').value.trim()
+  };
+  if(editId){
+    fsCol('vaccines').doc(editId).update(vacc);
+  } else {
+    vacc.createdAt=Date.now();
+    fsCol('vaccines').add(vacc);
+  }
+  logActivity('vaccine',`ভ্যাকসিন ${editId?'এডিট':'যোগ'} — ${name}`);
+  closeModalDirect();
+}
+
+function deleteVaccine(vid){
+  if(!can('vaccine')){alert('আপনার এই কাজের অনুমতি নেই!');return;}
+  if(!confirm('মুছবেন?'))return;
+  const v=data.vaccines.find(x=>x.id===vid);
+  fsCol('vaccines').doc(vid).delete();
+  if(v)logActivity('delete',`ভ্যাকসিন মুছে ফেলা হয়েছে — ${v.name}`);
+  closeModalDirect();
+}
+
+// ── SETTINGS ──────────────────────────────────────────────────────────────────
+function renderSettingsPage(){
+  document.getElementById('catChips').innerHTML=data.categories.map((c,i)=>`<span class="cat-chip">${c}<button class="cat-del" onclick="removeCat(${i})">×</button></span>`).join('');
+  applyTheme();
+  document.getElementById('accountEmailLine').textContent=`লগইন করা আছে: ${currentUser.email}`;
+  renderFarmInfoCard();
+  renderTeamSection();
+  if(myRole==='owner')renderActivityLog();
+  const nt=document.getElementById('notifToggle');
+  if(nt)nt.checked=(typeof Notification!=='undefined'&&Notification.permission==='granted'&&localStorage.getItem('pltry_notif_'+currentFarmId)==='on');
+}
+function renderActivityLog(){
+  const el=document.getElementById('activityLogSection');
+  if(!el)return;
+  el.innerHTML='<div class="empty" style="padding:16px">লোড হচ্ছে...</div>';
+  fsCol('activityLog').orderBy('at','desc').limit(50).get().then(snap=>{
+    if(snap.empty){el.innerHTML='<div class="empty" style="padding:16px"><i class="ti ti-history"></i>কোনো অ্যাক্টিভিটি নেই</div>';return;}
+    el.innerHTML=snap.docs.map(d=>{
+      const a=d.data();
+      const dt=new Date(a.at);
+      return`<div class="entry-item">
+        <div class="entry-dot dot-purple"><i class="ti ti-user" style="font-size:12px"></i></div>
+        <div class="entry-info"><div class="entry-name">${a.summary}</div>
+        <div class="entry-meta">${a.byEmail}${a.byRole?' ('+(a.byRole==='owner'?'মালিক':'অ্যাডমিন')+')':''} · ${dt.toLocaleDateString('bn-BD')} ${dt.toLocaleTimeString('bn-BD',{hour:'2-digit',minute:'2-digit'})}</div></div>
+      </div>`;
+    }).join('');
+  }).catch(err=>{el.innerHTML='<div class="empty" style="padding:16px;color:var(--red)">লোড করতে সমস্যা হয়েছে</div>';console.error(err);});
+}
+function renderFarmInfoCard(){
+  const el=document.getElementById('farmInfoCard');
+  if(!el||!currentFarmDoc)return;
+  el.innerHTML=`<div style="display:flex;align-items:center;gap:10px">
+    <span style="font-size:24px">${currentFarmDoc.icon||'🐔'}</span>
+    <div><div style="font-weight:700">${currentFarmDoc.name}</div>
+    <div style="font-size:11px;color:var(--muted)">আপনার ভূমিকা: ${myRole==='owner'?'মালিক (Owner)':'অ্যাডমিন'}</div></div>
+  </div>`;
+}
+function renderTeamSection(){
+  const el=document.getElementById('teamSection');
+  if(!el)return;
+  if(myRole!=='owner'){
+    el.innerHTML=`<div class="empty" style="padding:16px"><i class="ti ti-lock"></i>শুধু ফার্মের মালিক টিম ম্যানেজ করতে পারবেন</div>`;
+    return;
+  }
+  el.innerHTML=`<div class="empty" style="padding:16px">লোড হচ্ছে...</div>`;
+  db.collection('farmMemberships').where('farmId','==',currentFarmId).get().then(snap=>{
+    const members=snap.docs.map(d=>({id:d.id,...d.data()}));
+    el.innerHTML=`
+      <div class="card" style="margin-bottom:10px">
+        <div style="font-weight:600;font-size:13px;margin-bottom:8px">নতুন অ্যাডমিন যোগ করুন</div>
+        <div class="fg"><label>Gmail ইমেইল</label><input type="email" id="newAdminEmail" placeholder="worker@gmail.com"></div>
+        <div class="fg"><label>অনুমতি দিন</label>
+          <div style="display:flex;flex-wrap:wrap;gap:8px">
+            ${PERM_KEYS.map(k=>`<label class="perm-chip"><input type="checkbox" id="permNew_${k}"> ${PERM_LABELS[k]}</label>`).join('')}
+          </div>
+        </div>
+        <button class="btn btn-primary btn-sm btn-full" onclick="addAdmin()"><i class="ti ti-user-plus"></i> যোগ করুন</button>
+        <div style="font-size:11px;color:var(--muted);margin-top:8px">যাকে যোগ করবেন তাকে এই অ্যাপের লিংক দিন। সে Google দিয়ে (ঠিক এই ইমেইল দিয়ে) লগইন করলেই এই ফার্মে ঢুকে যাবে।</div>
+      </div>
+      ${members.length?members.map(m=>memberCardHtml(m)).join(''):'<div class="empty" style="padding:16px"><i class="ti ti-users"></i>কোনো অ্যাডমিন যোগ করা হয়নি</div>'}
+    `;
+  }).catch(err=>{el.innerHTML=`<div class="empty" style="padding:16px;color:var(--red)">লোড করতে সমস্যা হয়েছে</div>`;console.error(err);});
+}
+function memberCardHtml(m){
+  return`<div class="card" style="padding:12px 14px;margin-bottom:8px">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+      <div style="font-weight:600;font-size:13px">${m.email}</div>
+      <button class="btn btn-sm btn-danger" onclick="removeAdmin('${m.id}')"><i class="ti ti-trash"></i></button>
+    </div>
+    <div style="display:flex;flex-wrap:wrap;gap:8px">
+      ${PERM_KEYS.map(k=>`<label class="perm-chip"><input type="checkbox" ${m.permissions&&m.permissions[k]?'checked':''} onchange="updateAdminPerm('${m.id}','${k}',this.checked)"> ${PERM_LABELS[k]}</label>`).join('')}
+    </div>
+  </div>`;
+}
+async function addAdmin(){
+  const email=document.getElementById('newAdminEmail').value.trim().toLowerCase();
+  if(!email||!email.includes('@')){alert('সঠিক Gmail ইমেইল দিন!');return;}
+  if(email===currentUser.email.toLowerCase()){alert('আপনি নিজেই মালিক, নিজেকে অ্যাডমিন হিসেবে যোগ করার দরকার নেই!');return;}
+  const permissions={};
+  PERM_KEYS.forEach(k=>permissions[k]=document.getElementById('permNew_'+k).checked);
+  const docId=currentFarmId+'__'+email;
+  try{
+    await db.collection('farmMemberships').doc(docId).set({
+      farmId:currentFarmId,email,role:'admin',permissions,addedByEmail:currentUser.email,addedAt:Date.now()
+    });
+    logActivity('team',`নতুন অ্যাডমিন যোগ করা হয়েছে — ${email}`);
+    alert(`✅ ${email} কে অ্যাডমিন হিসেবে যোগ করা হয়েছে। এখন তাকে অ্যাপের লিংক দিন।`);
+    renderTeamSection();
+  }catch(err){alert('যোগ করতে সমস্যা হয়েছে: '+err.message);}
+}
+async function updateAdminPerm(membershipId,key,checked){
+  try{
+    await db.collection('farmMemberships').doc(membershipId).update({['permissions.'+key]:checked});
+    logActivity('team',`${membershipId.split('__')[1]||'অ্যাডমিন'} — ${PERM_LABELS[key]} অনুমতি ${checked?'চালু':'বন্ধ'} করা হয়েছে`);
+  }
+  catch(err){alert('আপডেট করতে সমস্যা হয়েছে: '+err.message);}
+}
+async function removeAdmin(membershipId){
+  if(!confirm('এই অ্যাডমিনকে বাদ দেবেন?'))return;
+  await db.collection('farmMemberships').doc(membershipId).delete();
+  logActivity('team',`অ্যাডমিন বাদ দেওয়া হয়েছে — ${membershipId.split('__')[1]||''}`);
+  renderTeamSection();
+}
+function addCat(){
+  if(myRole!=='owner'){alert('শুধু ফার্মের মালিক ক্যাটাগরি পরিবর্তন করতে পারবেন!');return;}
+  const inp=document.getElementById('newCatInp');const v=inp.value.trim();if(!v)return;
+  if(data.categories.includes(v)){alert('আগেই আছে!');return;}
+  fsFarmDoc().update({categories:firebase.firestore.FieldValue.arrayUnion(v)});
+  inp.value='';
+}
+function removeCat(i){
+  if(myRole!=='owner'){alert('শুধু ফার্মের মালিক ক্যাটাগরি পরিবর্তন করতে পারবেন!');return;}
+  const cat=data.categories[i];
+  if(!confirm(`"${cat}" মুছবেন?`))return;
+  fsFarmDoc().update({categories:firebase.firestore.FieldValue.arrayRemove(cat)});
+}
+
+// ── EXPORT / IMPORT ───────────────────────────────────────────────────────────
+function exportData(){
+  const exportObj={};
+  ['projects','entries','vaccines','birdLogs','feedLogs','healthLogs','dues','notes','tasks','categories'].forEach(k=>exportObj[k]=data[k]);
+  const blob=new Blob([JSON.stringify(exportObj,null,2)],{type:'application/json'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);
+  a.download='poultry_backup_'+new Date().toISOString().slice(0,10)+'.json';
+  a.click();
+}
+// পুরনো (localStorage-ভিত্তিক v5) থেকে এক্সপোর্ট করা JSON ফাইল ক্লাউডে migrate করার জন্য — শুধু মালিক করতে পারবেন
+async function importData(e){
+  if(myRole!=='owner'){alert('শুধু ফার্মের মালিক ডেটা ইমপোর্ট করতে পারবেন!');e.target.value='';return;}
+  const file=e.target.files[0];if(!file)return;
+  const reader=new FileReader();
+  reader.onload=async ev=>{
+    try{
+      const imported=JSON.parse(ev.target.result);
+      if(!imported.projects||!imported.entries){alert('অবৈধ ফাইল!');return;}
+      if(!confirm('এই ফাইলের সব ডেটা বর্তমান ফার্মে যোগ হবে (আগের ডেটা মুছবে না)। এগিয়ে যাবেন?'))return;
+      const batch=db.batch();
+      const idMap={}; // old local id → new firestore doc ref id, for cross-references (e.g. entries.projId)
+      (imported.projects||[]).forEach(p=>{
+        const {id:oldId,...rest}=p;
+        const ref=fsCol('projects').doc();
+        idMap[oldId]=ref.id;
+        batch.set(ref,rest);
+      });
+      ['entries','vaccines','birdLogs','feedLogs','healthLogs'].forEach(col=>{
+        (imported[col]||[]).forEach(item=>{
+          const {id:oldId,...rest}=item;
+          if(rest.projId&&idMap[rest.projId])rest.projId=idMap[rest.projId];
+          batch.set(fsCol(col).doc(),rest);
+        });
+      });
+      (imported.dues||[]).forEach(d=>{const{id,...rest}=d;batch.set(fsCol('dues').doc(),rest);});
+      (imported.notes||[]).forEach(n=>{const{id,...rest}=n;batch.set(fsCol('notes').doc(),rest);});
+      (imported.tasks||[]).forEach(t=>{const{id,...rest}=t;batch.set(fsCol('tasks').doc(),rest);});
+      await batch.commit();
+      if(imported.categories&&imported.categories.length){
+        await fsFarmDoc().update({categories:firebase.firestore.FieldValue.arrayUnion(...imported.categories)});
+      }
+      alert('ডেটা সফলভাবে ইমপোর্ট হয়েছে!');
+    }catch(err){console.error(err);alert('ফাইল পড়তে/ইমপোর্ট করতে সমস্যা হয়েছে!');}
+  };
+  reader.readAsText(file);
+  e.target.value='';
+}
+
+// ── PROFILE PAGE ──────────────────────────────────────────────────────────────
+let activeProfileTab='projects';
+
+function renderProfilePage(){
+  switchProfileTab(activeProfileTab,document.getElementById('ptab-'+activeProfileTab));
+}
+
+function switchProfileTab(tab,btn){
+  activeProfileTab=tab;
+  document.querySelectorAll('[id^="ptab-"]').forEach(x=>x.classList.remove('active'));
+  document.querySelectorAll('[id^="psub-"]').forEach(x=>x.classList.add('hidden'));
+  if(btn)btn.classList.add('active');
+  document.getElementById('psub-'+tab).classList.remove('hidden');
+  if(tab==='projects')renderProfileProjects();
+  if(tab==='birds')renderBirdsTab();
+  if(tab==='feed')renderFeedTab();
+  if(tab==='dues')renderDuesTab();
+  if(tab==='contacts')renderContactsTab();
+  if(tab==='notes')renderNotes();
+  if(tab==='calendar')renderCalendar();
+  if(tab==='tasks')renderTasks();
+}
+
+function renderProfileProjects(){
+  const cont=document.getElementById('profileProjList');
+  if(!data.projects.length){cont.innerHTML='<div class="empty" style="padding:20px"><i class="ti ti-plant"></i>কোনো প্রজেক্ট নেই</div>';return;}
+  cont.innerHTML=data.projects.map(p=>{
+    const pe=data.entries.filter(e=>e.projId===p.id);
+    const inc=pe.filter(e=>e.type==='income').reduce((s,e)=>s+e.amount,0);
+    const exp=pe.filter(e=>e.type==='expense').reduce((s,e)=>s+e.amount,0);
+    const profit=inc-exp;
+    const daysActive=p.startDate?daysDiff(p.startDate,todayStr()):null;
+    const isActive=data.activeProjectId===p.id;
+    return`<div class="card" style="cursor:pointer;position:relative;${isActive?'border-color:var(--purple);box-shadow:0 0 0 1px var(--purple)':''}" onclick="enterProject('${p.id}')">
+      <button class="btn btn-icon btn-sm" style="position:absolute;top:10px;right:10px;z-index:2" onclick="event.stopPropagation();openProjDetail('${p.id}')"><i class="ti ti-dots-vertical"></i></button>
+      <div style="display:flex;align-items:center;gap:12px">
+        <div style="width:44px;height:44px;border-radius:12px;background:${p.color}22;display:flex;align-items:center;justify-content:center;font-size:24px">${p.icon}</div>
+        <div style="flex:1">
+          <div style="font-weight:600;font-size:14px;display:flex;align-items:center;gap:6px">${p.name}${isActive?'<span style="font-size:10px;background:var(--purple);color:#fff;padding:2px 8px;border-radius:50px">✓ এখন এখানে আছেন</span>':''}</div>
+          <div style="font-size:12px;color:var(--muted)">${BIRD_LABELS[p.birdType]} · ${liveCount(p)}টি জীবিত${daysActive!==null?' · '+daysActive+' দিন':''}</div>
+        </div>
+      </div>
+      <div style="display:flex;gap:8px;margin-top:10px">
+        <div style="flex:1;background:var(--green-bg);border-radius:8px;padding:6px;text-align:center">
+          <div style="font-size:10px;color:var(--green-text)">আয়</div>
+          <div style="font-size:13px;font-weight:600;color:var(--green-text)">${fmt(inc)} ৳</div>
+        </div>
+        <div style="flex:1;background:var(--red-bg);border-radius:8px;padding:6px;text-align:center">
+          <div style="font-size:10px;color:var(--red-text)">খরচ</div>
+          <div style="font-size:13px;font-weight:600;color:var(--red-text)">${fmt(exp)} ৳</div>
+        </div>
+      </div>
+      ${isActive?'':`<div style="margin-top:10px;font-size:12px;color:var(--blue);text-align:center;font-weight:600"><i class="ti ti-arrow-right-circle"></i> এখানে ঢুকতে ট্যাপ করুন</div>`}
+    </div>`;
+  }).join('');
+}
+
+// ── BIRD LOG (new / death / sale) ──────────────────────────────────────────────
+const BIRDLOG_TYPES={new:{label:'নতুন পাখি যোগ',icon:'🐣',cls:'dot-green',sign:'+'},death:{label:'মৃত্যু',icon:'☠️',cls:'dot-red',sign:'−'},sale:{label:'বিক্রি',icon:'💰',cls:'dot-purple',sign:'−'}};
+function renderBirdsTab(){
+  const ap=getActiveProject();
+  const wrap=document.getElementById('birdSummaryWrap');
+  if(!ap){wrap.innerHTML='<div class="card empty" style="padding:20px">কোনো প্রজেক্ট সক্রিয় নেই</div>';document.getElementById('birdLogList').innerHTML='';document.getElementById('healthLogList').innerHTML='';return;}
+  const logs=projBirdLogs(ap.id);
+  const added=logs.filter(b=>b.type==='new').reduce((s,b)=>s+b.count,0);
+  const deaths=logs.filter(b=>b.type==='death').reduce((s,b)=>s+b.count,0);
+  const sold=logs.filter(b=>b.type==='sale').reduce((s,b)=>s+b.count,0);
+  const lc=liveCount(ap);
+  const mort=mortalityRate(ap);
+  wrap.innerHTML=`<div class="card">
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px"><span style="font-size:20px">${ap.icon}</span><div style="font-weight:600">${ap.name}</div></div>
+    <div class="metrics-4">
+      <div class="metric"><div class="metric-label">শুরু</div><div class="metric-val">${ap.count}</div></div>
+      <div class="metric"><div class="metric-label">নতুন যোগ</div><div class="metric-val green">+${added}</div></div>
+      <div class="metric"><div class="metric-label">মৃত্যু/বিক্রি</div><div class="metric-val red">−${deaths+sold}</div></div>
+      <div class="metric"><div class="metric-label">জীবিত আছে</div><div class="metric-val">${lc}</div></div>
+    </div>
+    <div style="margin-top:8px;display:flex;justify-content:space-between;align-items:center">
+      <span style="font-size:12px;color:var(--muted)">মৃত্যুহার</span>
+      <span class="pct-pill ${mort===null?'badge-gray':(mort>10?'pct-low':(mort>5?'pct-mid':'pct-high'))}">${mort!==null?mort.toFixed(1)+'%':'—'}</span>
+    </div>
+  </div>`;
+  const bl=[...logs].sort((a,b)=>b.date.localeCompare(a.date)||b.createdAt-a.createdAt);
+  document.getElementById('birdLogList').innerHTML=bl.length?bl.map(b=>{
+    const t=BIRDLOG_TYPES[b.type];
+    return`<div class="entry-item"><div class="entry-dot ${t.cls}">${t.icon}</div>
+      <div class="entry-info"><div class="entry-name">${t.label} — ${b.count}টি</div><div class="entry-meta">${fmtDateShort(b.date)}${b.note?' · '+b.note:''}</div></div>
+      <button class="entry-del" onclick="deleteBirdLog('${b.id}')"><i class="ti ti-trash" style="font-size:12px"></i></button>
+    </div>`;
+  }).join(''):'<div class="empty" style="padding:16px"><i class="ti ti-feather"></i>কোনো লগ নেই</div>';
+
+  const hl=[...data.healthLogs.filter(h=>h.projId===ap.id)].sort((a,b)=>b.date.localeCompare(a.date)||b.createdAt-a.createdAt);
+  document.getElementById('healthLogList').innerHTML=hl.length?hl.map(h=>`
+    <div class="entry-item"><div class="entry-dot dot-orange">🩺</div>
+      <div class="entry-info"><div class="entry-name">${h.disease||'অসুস্থতা'} — ${h.sickCount}টি পাখি</div><div class="entry-meta">${fmtDateShort(h.date)}${h.treatment?' · চিকিৎসা: '+h.treatment:''}${h.cost?' · '+fmt(h.cost)+' ৳':''}</div></div>
+      <button class="entry-del" onclick="deleteHealthLog('${h.id}')"><i class="ti ti-trash" style="font-size:12px"></i></button>
+    </div>`).join(''):'<div class="empty" style="padding:16px"><i class="ti ti-stethoscope"></i>কোনো অসুস্থতা রেকর্ড নেই</div>';
+}
+function showAddBirdLogModal(){
+  const ap=getActiveProject();
+  if(!ap){document.getElementById('modalContent').innerHTML='<p style="color:var(--red);font-size:13px">আগে হোম থেকে একটি প্রজেক্ট বেছে নিন</p>';return;}
+  document.getElementById('modalContent').innerHTML=`
+    <div class="modal-title"><span>🐔 পাখি লগ যোগ করুন</span><button class="btn btn-sm" onclick="closeModalDirect()"><i class="ti ti-x"></i></button></div>
+    <div class="fg"><label>ধরন</label>
+      <select id="blType">
+        <option value="new">🐣 নতুন পাখি যোগ</option>
+        <option value="death">☠️ মৃত্যু</option>
+        <option value="sale">💰 বিক্রি</option>
+      </select>
+    </div>
+    <div class="fg"><label>সংখ্যা (টি) *</label>${stepperHtml('blCount',1,1)}</div>
+    <div class="fg"><label>তারিখ</label><input type="date" id="blDate" value="${todayStr()}"></div>
+    <div class="fg"><label>কারণ / নোট</label><input type="text" id="blNote" placeholder="ঐচ্ছিক... যেমন: রোগে মৃত্যু"></div>
+    <button class="btn btn-primary btn-full" onclick="saveBirdLog()"><i class="ti ti-device-floppy"></i> সেভ করুন</button>`;
+}
+function saveBirdLog(){
+  if(!can('birds')){alert('আপনার এই কাজের অনুমতি নেই!');return;}
+  const ap=getActiveProject();if(!ap)return;
+  const count=parseInt(document.getElementById('blCount').value)||0;
+  if(count<=0){alert('সংখ্যা দিন!');return;}
+  const type=document.getElementById('blType').value;
+  const date=document.getElementById('blDate').value||todayStr();
+  fsCol('birdLogs').add({projId:ap.id,type,count,date,note:document.getElementById('blNote').value.trim(),createdAt:Date.now()});
+  const typeLabel=type==='new'?'নতুন পাখি':(type==='death'?'মৃত্যু':'বিক্রি');
+  logActivity('birds',`${typeLabel} — ${count}টি (${ap.name})`);
+  closeModalDirect();
+}
+function deleteBirdLog(bid){
+  if(!can('birds')){alert('আপনার এই কাজের অনুমতি নেই!');return;}
+  if(!confirm('মুছবেন?'))return;
+  fsCol('birdLogs').doc(bid).delete();
+}
+
+function showAddHealthLogModal(){
+  const ap=getActiveProject();
+  if(!ap){document.getElementById('modalContent').innerHTML='<p style="color:var(--red);font-size:13px">আগে হোম থেকে একটি প্রজেক্ট বেছে নিন</p>';return;}
+  document.getElementById('modalContent').innerHTML=`
+    <div class="modal-title"><span>🩺 অসুস্থতা রেকর্ড</span><button class="btn btn-sm" onclick="closeModalDirect()"><i class="ti ti-x"></i></button></div>
+    <div class="fg"><label>অসুস্থ পাখির সংখ্যা *</label>${stepperHtml('hlCount',1,1)}</div>
+    <div class="fg"><label>তারিখ</label><input type="date" id="hlDate" value="${todayStr()}"></div>
+    <div class="fg"><label>রোগের নাম</label><input type="text" id="hlDisease" placeholder="যেমন: ঠান্ডা, ডায়রিয়া..."></div>
+    <div class="fg"><label>চিকিৎসা</label><input type="text" id="hlTreatment" placeholder="যেমন: ওষুধের নাম"></div>
+    <div class="fg"><label>চিকিৎসার খরচ (৳)</label><input type="number" id="hlCost" min="0" placeholder="0"></div>
+    <div class="fg"><label>নোট</label><textarea id="hlNote" rows="2" placeholder="ঐচ্ছিক..."></textarea></div>
+    <button class="btn btn-primary btn-full" onclick="saveHealthLog()"><i class="ti ti-device-floppy"></i> সেভ করুন</button>`;
+}
+function saveHealthLog(){
+  if(!can('birds')){alert('আপনার এই কাজের অনুমতি নেই!');return;}
+  const ap=getActiveProject();if(!ap)return;
+  const sickCount=parseInt(document.getElementById('hlCount').value)||0;
+  if(sickCount<=0){alert('সংখ্যা দিন!');return;}
+  fsCol('healthLogs').add({projId:ap.id,sickCount,date:document.getElementById('hlDate').value||todayStr(),
+    disease:document.getElementById('hlDisease').value.trim(),treatment:document.getElementById('hlTreatment').value.trim(),
+    cost:parseFloat(document.getElementById('hlCost').value)||0,note:document.getElementById('hlNote').value.trim(),createdAt:Date.now()});
+  logActivity('birds',`অসুস্থতা রেকর্ড — ${sickCount}টি পাখি (${ap.name})`);
+  closeModalDirect();
+}
+function deleteHealthLog(hid){
+  if(!can('birds')){alert('আপনার এই কাজের অনুমতি নেই!');return;}
+  if(!confirm('মুছবেন?'))return;
+  fsCol('healthLogs').doc(hid).delete();
+}
+
+// ── FEED STOCK ──────────────────────────────────────────────────────────────────
+const FEED_UNITS=['কেজি','বস্তা','লিটার'];
+function feedStock(pid){
+  const logs=data.feedLogs.filter(f=>f.projId===pid);
+  const inKg=logs.filter(f=>f.type==='in').reduce((s,f)=>s+f.kg,0);
+  const useKg=logs.filter(f=>f.type==='use').reduce((s,f)=>s+f.kg,0);
+  return Math.max(0,inKg-useKg);
+}
+function feedDailyAvgUse(pid){
+  const logs=data.feedLogs.filter(f=>f.projId===pid&&f.type==='use');
+  if(!logs.length)return 0;
+  const days=[...new Set(logs.map(f=>f.date))].length||1;
+  return logs.reduce((s,f)=>s+f.kg,0)/days;
+}
+function feedCostThisMonth(pid){
+  const curMonth=todayStr().slice(0,7);
+  return data.feedLogs.filter(f=>f.projId===pid&&f.type==='in'&&f.date.slice(0,7)===curMonth).reduce((s,f)=>s+(f.kg*(f.pricePerKg||0)),0);
+}
+function renderFeedTab(){
+  const ap=getActiveProject();
+  const wrap=document.getElementById('feedSummaryWrap');
+  if(!ap){wrap.innerHTML='<div class="card empty" style="padding:20px">কোনো প্রজেক্ট সক্রিয় নেই</div>';document.getElementById('feedLogList').innerHTML='';return;}
+  const stock=feedStock(ap.id);
+  const avgUse=feedDailyAvgUse(ap.id);
+  const daysLeft=avgUse>0?Math.floor(stock/avgUse):null;
+  const monthCost=feedCostThisMonth(ap.id);
+  const lc=liveCount(ap);
+  const perBirdDaily=lc?(avgUse/lc).toFixed(3):'—';
+  const low=daysLeft!==null&&daysLeft<=3;
+  wrap.innerHTML=`
+    ${low?`<div class="notif-banner notif-overdue"><div style="font-weight:600;color:var(--red);font-size:13px">⚠️ ফিড স্টক কমে যাচ্ছে — মাত্র প্রায় ${daysLeft} দিন চলবে</div></div>`:''}
+    <div class="card">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px"><span style="font-size:20px">${ap.icon}</span><div style="font-weight:600">${ap.name}</div></div>
+      <div class="metrics-4">
+        <div class="metric"><div class="metric-label">বর্তমান স্টক</div><div class="metric-val ${low?'red':''}">${fmt(stock)} কেজি</div></div>
+        <div class="metric"><div class="metric-label">দৈনিক ব্যবহার</div><div class="metric-val">${avgUse?fmt(avgUse):0} কেজি</div></div>
+        <div class="metric"><div class="metric-label">এ মাসের খরচ</div><div class="metric-val red">${fmt(monthCost)} ৳</div></div>
+        <div class="metric"><div class="metric-label">প্রতি পাখি/দিন</div><div class="metric-val">${perBirdDaily} কেজি</div></div>
+      </div>
+    </div>`;
+  const logs=[...data.feedLogs.filter(f=>f.projId===ap.id)].sort((a,b)=>b.date.localeCompare(a.date)||b.createdAt-a.createdAt);
+  document.getElementById('feedLogList').innerHTML=logs.length?logs.map(f=>`
+    <div class="entry-item"><div class="entry-dot ${f.type==='in'?'dot-green':'dot-red'}">${f.type==='in'?'+':'−'}</div>
+      <div class="entry-info"><div class="entry-name">${f.type==='in'?'ফিড এলো':'ফিড ব্যবহার'} — ${fmt(f.kg)} কেজি</div>
+      <div class="entry-meta">${fmtDateShort(f.date)}${f.type==='in'&&f.pricePerKg?' · '+f.pricePerKg+' ৳/কেজি':''}${f.supplier?' · '+f.supplier:''}</div></div>
+      <button class="entry-del" onclick="deleteFeedLog('${f.id}')"><i class="ti ti-trash" style="font-size:12px"></i></button>
+    </div>`).join(''):'<div class="empty" style="padding:16px"><i class="ti ti-wheat"></i>কোনো ফিড লগ নেই</div>';
+}
+function showAddFeedLogModal(){
+  const ap=getActiveProject();
+  if(!ap){document.getElementById('modalContent').innerHTML='<p style="color:var(--red);font-size:13px">আগে হোম থেকে একটি প্রজেক্ট বেছে নিন</p>';return;}
+  document.getElementById('modalContent').innerHTML=`
+    <div class="modal-title"><span>🌾 ফিড এন্ট্রি</span><button class="btn btn-sm" onclick="closeModalDirect()"><i class="ti ti-x"></i></button></div>
+    <div class="type-toggle">
+      <button type="button" class="type-btn active-inc" id="flIn" onclick="setFeedLogType('in')">📦 ফিড এলো (বস্তা)</button>
+      <button type="button" class="type-btn" id="flUse" onclick="setFeedLogType('use')">🍽️ ব্যবহার হলো (কেজি)</button>
+    </div>
+
+    <!-- IN: bag-based -->
+    <div id="flInBox">
+      <div class="fg"><label>বস্তার সাইজ</label>
+        <div class="type-toggle" style="margin-bottom:0">
+          <button type="button" class="type-btn active-inc" id="bagSize25" onclick="setBagSize(25)">২৫ কেজি</button>
+          <button type="button" class="type-btn" id="bagSize50" onclick="setBagSize(50)">৫০ কেজি</button>
+          <button type="button" class="type-btn" id="bagSizeCustom" onclick="setBagSize('custom')">কাস্টম</button>
+        </div>
+      </div>
+      <div class="fg hidden" id="customBagBox"><label>এক বস্তায় কত কেজি?</label><input type="number" id="flCustomBagKg" min="1" placeholder="যেমন: ৪০"></div>
+      <div class="fg"><label>কয়টা বস্তা এলো? *</label>${stepperHtml('flBags',1,1)}</div>
+      <div style="text-align:center;font-size:13px;color:var(--muted);margin:-4px 0 12px" id="flTotalKgPreview">মোট = ০ কেজি</div>
+    </div>
+
+    <!-- USE: direct kg -->
+    <div id="flUseBox" class="hidden">
+      <div class="fg"><label>কত কেজি ব্যবহার হলো? *</label>${stepperHtml('flUseKg',1,0)}</div>
+    </div>
+
+    <div class="fg"><label>তারিখ</label><input type="date" id="flDate" value="${todayStr()}"></div>
+    <div id="flPriceBox" class="row2">
+      <div class="fg"><label>মোট দাম (৳)</label><input type="number" id="flPrice" min="0" placeholder="0"></div>
+      <div class="fg"><label>বিক্রেতার নাম</label><input type="text" id="flSupplier" list="supplierNamesList" placeholder="ঐচ্ছিক..."></div>
+    </div>
+    <div class="fg"><label>নোট</label><input type="text" id="flNote" placeholder="ঐচ্ছিক..."></div>
+    <button class="btn btn-primary btn-full" onclick="saveFeedLog()"><i class="ti ti-device-floppy"></i> সেভ করুন</button>`;
+  _feedLogType='in';_bagSizeKg=25;
+  wireSteppers(['flBags','flUseKg']);
+  document.getElementById('flBags').addEventListener('input',updateFeedKgPreview);
+  updateFeedKgPreview();
+}
+let _feedLogType='in';
+let _bagSizeKg=25;
+function setBagSize(sz){
+  _bagSizeKg=sz;
+  document.getElementById('bagSize25').className='type-btn'+(sz===25?' active-inc':'');
+  document.getElementById('bagSize50').className='type-btn'+(sz===50?' active-inc':'');
+  document.getElementById('bagSizeCustom').className='type-btn'+(sz==='custom'?' active-inc':'');
+  document.getElementById('customBagBox').classList.toggle('hidden',sz!=='custom');
+  updateFeedKgPreview();
+}
+function updateFeedKgPreview(){
+  const bags=parseFloat(document.getElementById('flBags')?.value)||0;
+  const perBag=_bagSizeKg==='custom'?(parseFloat(document.getElementById('flCustomBagKg')?.value)||0):_bagSizeKg;
+  const el=document.getElementById('flTotalKgPreview');
+  if(el)el.textContent=`মোট = ${fmt(bags*perBag)} কেজি`;
+}
+function setFeedLogType(t){
+  _feedLogType=t;
+  document.getElementById('flIn').className='type-btn'+(t==='in'?' active-inc':'');
+  document.getElementById('flUse').className='type-btn'+(t==='use'?' active-exp':'');
+  document.getElementById('flInBox').classList.toggle('hidden',t!=='in');
+  document.getElementById('flUseBox').classList.toggle('hidden',t!=='use');
+  document.getElementById('flPriceBox').style.display=t==='in'?'grid':'none';
+}
+function saveFeedLog(){
+  if(!can('feed')){alert('আপনার এই কাজের অনুমতি নেই!');return;}
+  const ap=getActiveProject();if(!ap)return;
+  let kg=0,bags=0,bagSizeKg=0;
+  if(_feedLogType==='in'){
+    bags=parseFloat(document.getElementById('flBags').value)||0;
+    bagSizeKg=_bagSizeKg==='custom'?(parseFloat(document.getElementById('flCustomBagKg').value)||0):_bagSizeKg;
+    if(bags<=0||bagSizeKg<=0){alert('বস্তার সংখ্যা ও সাইজ দিন!');return;}
+    kg=bags*bagSizeKg;
+  } else {
+    kg=parseFloat(document.getElementById('flUseKg').value)||0;
+    if(kg<=0){alert('পরিমাণ দিন!');return;}
+  }
+  const totalPrice=parseFloat(document.getElementById('flPrice').value)||0;
+  const supplier=_feedLogType==='in'?document.getElementById('flSupplier').value.trim():'';
+  fsCol('feedLogs').add({projId:ap.id,type:_feedLogType,kg,
+    bags:_feedLogType==='in'?bags:0,bagSizeKg:_feedLogType==='in'?bagSizeKg:0,
+    pricePerKg:_feedLogType==='in'&&kg>0?(totalPrice/kg):0,
+    totalPrice:_feedLogType==='in'?totalPrice:0,
+    supplier,
+    date:document.getElementById('flDate').value||todayStr(),
+    note:document.getElementById('flNote').value.trim(),createdAt:Date.now()});
+  if(supplier)ensureContact(supplier,'supplier');
+  logActivity('feed',`${_feedLogType==='in'?'ফিড এলো':'ফিড ব্যবহার'} — ${fmt(kg)} কেজি (${ap.name})`);
+  closeModalDirect();
+}
+function deleteFeedLog(fid){
+  if(!can('feed')){alert('আপনার এই কাজের অনুমতি নেই!');return;}
+  if(!confirm('মুছবেন?'))return;
+  fsCol('feedLogs').doc(fid).delete();
+}
+
+// ── DUES / PAYABLES ───────────────────────────────────────────────────────────
+let duesFilter='all';
+function setDuesFilter(f,el){duesFilter=f;document.querySelectorAll('#duesFilterTabs .ftab').forEach(x=>x.classList.remove('active'));el.classList.add('active');renderDuesTab();}
+function renderDuesTab(){
+  let list=[...data.dues];
+  if(duesFilter!=='all')list=list.filter(d=>d.type===duesFilter);
+  list.sort((a,b)=>(a.paid===b.paid?0:(a.paid?1:-1))||(a.dueDate||'').localeCompare(b.dueDate||''));
+  const totalReceivable=data.dues.filter(d=>d.type==='receivable'&&!d.paid).reduce((s,d)=>s+d.amount,0);
+  const totalPayable=data.dues.filter(d=>d.type==='payable'&&!d.paid).reduce((s,d)=>s+d.amount,0);
+  document.getElementById('duesSummaryWrap').innerHTML=`<div class="metrics" style="margin-bottom:14px">
+    <div class="metric"><div class="metric-label">মোট পাবো</div><div class="metric-val green">${fmt(totalReceivable)} ৳</div></div>
+    <div class="metric"><div class="metric-label">মোট দিব</div><div class="metric-val red">${fmt(totalPayable)} ৳</div></div>
+  </div>`;
+  const today=todayStr();
+  document.getElementById('duesList').innerHTML=list.length?list.map(d=>{
+    const overdue=!d.paid&&d.dueDate&&d.dueDate<today;
+    return`<div class="card" style="padding:12px 14px;${d.paid?'opacity:.55':''}">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start">
+        <div>
+          <div style="font-weight:600;font-size:13px">${d.type==='receivable'?'📥':'📤'} ${d.person}</div>
+          <div style="font-size:11px;color:var(--muted);margin-top:2px">${d.dueDate?fmtDateShort(d.dueDate):''}${overdue?' · <span style="color:var(--red);font-weight:600">মেয়াদোত্তীর্ণ</span>':''}${d.note?' · '+d.note:''}</div>
+        </div>
+        <div style="text-align:right">
+          <div class="${d.type==='receivable'?'green':'red'}" style="font-weight:700">${fmt(d.amount)} ৳</div>
+          <div style="font-size:10px;color:var(--muted)">${d.paid?'পরিশোধিত':'বাকি'}</div>
+        </div>
+      </div>
+      <div style="display:flex;gap:8px;margin-top:10px">
+        ${!d.paid?`<button class="btn btn-sm btn-primary" onclick="toggleDuePaid('${d.id}')"><i class="ti ti-check"></i> পরিশোধিত হিসেবে চিহ্নিত করুন</button>`:`<button class="btn btn-sm" onclick="toggleDuePaid('${d.id}')">আনমার্ক করুন</button>`}
+        <button class="btn btn-sm btn-danger" onclick="deleteDue('${d.id}')"><i class="ti ti-trash"></i></button>
+      </div>
+    </div>`;
+  }).join(''):'<div class="empty" style="padding:20px"><i class="ti ti-cash-off"></i>কোনো এন্ট্রি নেই</div>';
+}
+function showAddDueModal(){
+  document.getElementById('modalContent').innerHTML=`
+    <div class="modal-title"><span>💵 পাওনা-দেনা যোগ করুন</span><button class="btn btn-sm" onclick="closeModalDirect()"><i class="ti ti-x"></i></button></div>
+    <div class="type-toggle">
+      <button type="button" class="type-btn active-inc" id="dtRecv" onclick="setDueType('receivable')">📥 পাবো</button>
+      <button type="button" class="type-btn" id="dtPay" onclick="setDueType('payable')">📤 দিব</button>
+    </div>
+    <div class="fg"><label>নাম *</label><input type="text" id="dPerson" placeholder="কার কাছে / কাকে"></div>
+    <div class="row2">
+      <div class="fg"><label>পরিমাণ (৳) *</label><input type="number" id="dAmount" min="0" placeholder="0"></div>
+      <div class="fg"><label>পরিশোধের তারিখ</label><input type="date" id="dDueDate"></div>
+    </div>
+    <div class="fg"><label>নোট</label><input type="text" id="dNote" placeholder="ঐচ্ছিক..."></div>
+    <button class="btn btn-primary btn-full" onclick="saveDue()"><i class="ti ti-device-floppy"></i> সেভ করুন</button>`;
+  _dueType='receivable';
+}
+let _dueType='receivable';
+function setDueType(t){
+  _dueType=t;
+  document.getElementById('dtRecv').className='type-btn'+(t==='receivable'?' active-inc':'');
+  document.getElementById('dtPay').className='type-btn'+(t==='payable'?' active-exp':'');
+}
+function saveDue(){
+  if(!can('dues')){alert('আপনার এই কাজের অনুমতি নেই!');return;}
+  const person=document.getElementById('dPerson').value.trim();
+  if(!person){alert('নাম দিন!');return;}
+  const amount=parseFloat(document.getElementById('dAmount').value);
+  if(!amount||amount<=0){alert('পরিমাণ দিন!');return;}
+  fsCol('dues').add({type:_dueType,person,amount,dueDate:document.getElementById('dDueDate').value||'',
+    note:document.getElementById('dNote').value.trim(),paid:false,createdAt:Date.now()});
+  ensureContact(person,_dueType==='receivable'?'buyer':'supplier');
+  logActivity('dues',`${_dueType==='receivable'?'পাওনা':'দেনা'} যোগ — ${person} (${fmt(amount)} ৳)`);
+  closeModalDirect();
+}
+function toggleDuePaid(did){
+  if(!can('dues')){alert('আপনার এই কাজের অনুমতি নেই!');return;}
+  const d=data.dues.find(x=>x.id===did);if(!d)return;
+  fsCol('dues').doc(did).update({paid:!d.paid,paidAt:!d.paid?Date.now():null});
+  logActivity('dues',`${d.person} — ${!d.paid?'পরিশোধিত হিসেবে চিহ্নিত':'আনমার্ক করা হয়েছে'}`);
+}
+function deleteDue(did){
+  if(!can('dues')){alert('আপনার এই কাজের অনুমতি নেই!');return;}
+  if(!confirm('মুছবেন?'))return;
+  const d=data.dues.find(x=>x.id===did);
+  fsCol('dues').doc(did).delete();
+  if(d)logActivity('delete',`পাওনা-দেনা মুছে ফেলা হয়েছে — ${d.person}`);
+}
+
+// ── সাপ্লায়ার ও ক্রেতা (কন্টাক্ট) ─────────────────────────────────────────────
+function contactStats(name){
+  const lname=name.toLowerCase();
+  const boughtEntries=data.entries.filter(e=>e.type==='expense'&&(e.supplier||'').toLowerCase()===lname);
+  const soldEntries=data.entries.filter(e=>e.type==='income'&&e.source==='egg_sell'&&(e.buyerName||'').toLowerCase()===lname);
+  const feedBought=data.feedLogs.filter(f=>f.type==='in'&&(f.supplier||'').toLowerCase()===lname);
+  const totalBought=boughtEntries.reduce((s,e)=>s+e.amount,0)+feedBought.reduce((s,f)=>s+(f.totalPrice||0),0);
+  const totalSold=soldEntries.reduce((s,e)=>s+e.amount,0);
+  const dues=data.dues.filter(d=>(d.person||'').toLowerCase()===lname&&!d.paid);
+  const owedToThem=dues.filter(d=>d.type==='payable').reduce((s,d)=>s+d.amount,0);
+  const owedByThem=dues.filter(d=>d.type==='receivable').reduce((s,d)=>s+d.amount,0);
+  return{totalBought,totalSold,owedToThem,owedByThem};
+}
+let contactsFilter='all';
+function setContactsFilter(f,el){contactsFilter=f;document.querySelectorAll('#contactsFilterTabs .ftab').forEach(x=>x.classList.remove('active'));el.classList.add('active');renderContactsTab();}
+function renderContactsTab(){
+  let list=[...data.contacts];
+  if(contactsFilter!=='all')list=list.filter(c=>c.type===contactsFilter||c.type==='both');
+  list.sort((a,b)=>a.name.localeCompare(b.name,'bn'));
+  document.getElementById('contactsList').innerHTML=list.length?list.map(c=>{
+    const st=contactStats(c.name);
+    return`<div class="card" style="padding:12px 14px;margin-bottom:8px">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start">
+        <div>
+          <div style="font-weight:600;font-size:13px">${c.type==='supplier'?'📦':(c.type==='buyer'?'🧺':'🔁')} ${c.name}</div>
+          <div style="font-size:11px;color:var(--muted)">${c.phone||''}${c.phone&&c.address?' · ':''}${c.address||''}</div>
+        </div>
+        <div style="display:flex;gap:6px">
+          <button class="btn btn-icon btn-sm" data-perm="entries" onclick="editContactModal('${c.id}')"><i class="ti ti-pencil"></i></button>
+          <button class="btn btn-icon btn-sm" data-perm="entries" onclick="deleteContact('${c.id}')"><i class="ti ti-trash"></i></button>
+        </div>
+      </div>
+      ${(st.totalSold||st.totalBought)?`<div style="display:flex;gap:8px;margin-top:10px">
+        ${st.totalSold?`<div style="flex:1;background:var(--green-bg);border-radius:8px;padding:6px;text-align:center"><div style="font-size:10px;color:var(--green-text)">বিক্রি করেছি</div><div style="font-size:13px;font-weight:600;color:var(--green-text)">${fmt(st.totalSold)} ৳</div></div>`:''}
+        ${st.totalBought?`<div style="flex:1;background:var(--red-bg);border-radius:8px;padding:6px;text-align:center"><div style="font-size:10px;color:var(--red-text)">কিনেছি</div><div style="font-size:13px;font-weight:600;color:var(--red-text)">${fmt(st.totalBought)} ৳</div></div>`:''}
+      </div>`:''}
+      ${(st.owedToThem||st.owedByThem)?`<div style="margin-top:8px;font-size:11px;color:var(--muted)">${st.owedToThem?'তাকে বাকি দিতে হবে: '+fmt(st.owedToThem)+' ৳  ':''}${st.owedByThem?'তার কাছে পাওনা: '+fmt(st.owedByThem)+' ৳':''}</div>`:''}
+      ${c.note?`<div style="margin-top:6px;font-size:11px;color:var(--muted)">${c.note}</div>`:''}
+    </div>`;
+  }).join(''):'<div class="empty" style="padding:20px"><i class="ti ti-address-book"></i>কোনো সাপ্লায়ার/ক্রেতা নেই — এন্ট্রিতে নাম লিখলে এখানে অটো যোগ হয়ে যায়</div>';
+}
+let _editContactId=null;
+function showAddContactModal(editId){
+  _editContactId=editId||null;
+  const c=editId?data.contacts.find(x=>x.id===editId):null;
+  document.getElementById('modalContent').innerHTML=`
+    <div class="modal-title"><span>📇 ${c?'সম্পাদনা':'নতুন যোগাযোগ'}</span><button class="btn btn-sm" onclick="closeModalDirect()"><i class="ti ti-x"></i></button></div>
+    <div class="fg"><label>নাম *</label><input type="text" id="cName" value="${c?c.name:''}"></div>
+    <div class="fg"><label>ধরন</label>
+      <select id="cType">
+        <option value="supplier" ${c&&c.type==='supplier'?'selected':''}>📦 সাপ্লায়ার (যার কাছ থেকে কিনি)</option>
+        <option value="buyer" ${c&&c.type==='buyer'?'selected':''}>🧺 ক্রেতা (যাকে বিক্রি করি)</option>
+        <option value="both" ${c&&c.type==='both'?'selected':''}>🔁 দুটোই</option>
+      </select>
+    </div>
+    <div class="row2">
+      <div class="fg"><label>ফোন</label><input type="text" id="cPhone" value="${c?c.phone||'':''}"></div>
+      <div class="fg"><label>ঠিকানা</label><input type="text" id="cAddress" value="${c?c.address||'':''}"></div>
+    </div>
+    <div class="fg"><label>নোট</label><input type="text" id="cNote" placeholder="ঐচ্ছিক..." value="${c?c.note||'':''}"></div>
+    <button class="btn btn-primary btn-full" onclick="saveContact()"><i class="ti ti-device-floppy"></i> সেভ করুন</button>`;
+  document.getElementById('modalOverlay').classList.remove('hidden');
+}
+function editContactModal(id){showAddContactModal(id);}
+function saveContact(){
+  if(!can('entries')){alert('আপনার এই কাজের অনুমতি নেই!');return;}
+  const name=document.getElementById('cName').value.trim();
+  if(!name){alert('নাম দিন!');return;}
+  const obj={name,type:document.getElementById('cType').value,
+    phone:document.getElementById('cPhone').value.trim(),
+    address:document.getElementById('cAddress').value.trim(),
+    note:document.getElementById('cNote').value.trim()};
+  if(_editContactId){fsCol('contacts').doc(_editContactId).update(obj);}
+  else{obj.createdAt=Date.now();fsCol('contacts').add(obj);}
+  closeModalDirect();_editContactId=null;
+}
+function deleteContact(id){
+  if(!can('entries')){alert('আপনার এই কাজের অনুমতি নেই!');return;}
+  if(!confirm('মুছবেন? (এর সাথে যুক্ত লেনদেনের হিস্ট্রি মুছবে না, শুধু এই কন্টাক্ট কার্ডটা মুছবে)'))return;
+  fsCol('contacts').doc(id).delete();
+}
+
+// ── NOTES ─────────────────────────────────────────────────────────────────────
+function addNote(){
+  const inp=document.getElementById('noteInput');
+  const text=inp.value.trim();if(!text)return;
+  if(_editNoteId){
+    fsCol('notes').doc(_editNoteId).update({text,editedAt:Date.now()});
+    _editNoteId=null;
+    document.getElementById('noteEditHint').classList.add('hidden');
+    document.getElementById('noteSendBtn').innerHTML='<i class="ti ti-send"></i>';
+  } else {
+    fsCol('notes').add({text,date:todayStr(),author:currentUser.email,createdAt:Date.now()});
+  }
+  inp.value='';
+}
+function startEditNote(nid){
+  const n=data.notes.find(x=>x.id===nid);if(!n)return;
+  _editNoteId=nid;
+  document.getElementById('noteInput').value=n.text;
+  document.getElementById('noteInput').focus();
+  document.getElementById('noteEditHint').classList.remove('hidden');
+  document.getElementById('noteSendBtn').innerHTML='<i class="ti ti-device-floppy"></i>';
+}
+function cancelEditNote(){
+  _editNoteId=null;
+  document.getElementById('noteInput').value='';
+  document.getElementById('noteEditHint').classList.add('hidden');
+  document.getElementById('noteSendBtn').innerHTML='<i class="ti ti-send"></i>';
+}
+function renderNotes(){
+  const cont=document.getElementById('notesList');
+  if(!data.notes.length){cont.innerHTML='<div class="empty"><i class="ti ti-note"></i>কোনো নোট নেই</div>';return;}
+  cont.innerHTML=[...data.notes].sort((a,b)=>b.createdAt-a.createdAt).map(n=>`
+    <div class="note-item">
+      <div style="position:absolute;top:8px;right:8px;display:flex;gap:6px">
+        <button class="note-del" style="position:static;color:var(--blue)" onclick="startEditNote('${n.id}')"><i class="ti ti-pencil"></i></button>
+        <button class="note-del" style="position:static" onclick="deleteNote('${n.id}')"><i class="ti ti-x"></i></button>
+      </div>
+      <div class="note-text">${n.text.replace(/\n/g,'<br>')}</div>
+      <div class="note-date">${fmtDate(n.date)}${n.author?' · '+n.author.split('@')[0]:''}${n.editedAt?' · সম্পাদিত':''}</div>
+    </div>`).join('');
+}
+function deleteNote(nid){
+  if(!confirm('মুছবেন?'))return;
+  fsCol('notes').doc(nid).delete();
+  if(_editNoteId===nid)cancelEditNote();
+}
+
+// ── CALENDAR ──────────────────────────────────────────────────────────────────
+function renderCalendar(){
+  const months=['জানুয়ারি','ফেব্রুয়ারি','মার্চ','এপ্রিল','মে','জুন','জুলাই','আগস্ট','সেপ্টেম্বর','অক্টোবর','নভেম্বর','ডিসেম্বর'];
+  document.getElementById('calTitle').textContent=months[calMonth]+' '+calYear;
+  const grid=document.getElementById('calGrid');
+  const days=['রবি','সোম','মঙ্গল','বুধ','বৃহ','শুক্র','শনি'];
+  const todayFull=todayStr();
+  // entry dates set
+  const entryDates=new Set(data.entries.map(e=>e.date));
+  let html=days.map(d=>`<div class="cal-day-label">${d}</div>`).join('');
+  const first=new Date(calYear,calMonth,1);
+  const startDay=first.getDay();
+  const daysInMonth=new Date(calYear,calMonth+1,0).getDate();
+  for(let i=0;i<startDay;i++) html+=`<div class="cal-day other-month"></div>`;
+  for(let d=1;d<=daysInMonth;d++){
+    const ds=`${calYear}-${String(calMonth+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    const isToday=ds===todayFull;
+    const hasEntry=entryDates.has(ds);
+    html+=`<div class="cal-day ${isToday?'today':''} ${hasEntry?'has-entry':''}" onclick="showCalDay('${ds}')">${d}</div>`;
+  }
+  grid.innerHTML=html;
+  document.getElementById('calDayEntries').innerHTML='';
+}
+function calPrev(){calMonth--;if(calMonth<0){calMonth=11;calYear--;}renderCalendar();}
+function calNext(){calMonth++;if(calMonth>11){calMonth=0;calYear++;}renderCalendar();}
+function showCalDay(date){
+  const es=data.entries.filter(e=>e.date===date);
+  const cont=document.getElementById('calDayEntries');
+  if(!es.length){cont.innerHTML=`<div class="card"><div class="empty" style="padding:16px">${fmtDate(date)} — কোনো লেনদেন নেই</div></div>`;return;}
+  const inc=es.filter(e=>e.type==='income').reduce((s,e)=>s+e.amount,0);
+  const exp=es.filter(e=>e.type==='expense').reduce((s,e)=>s+e.amount,0);
+  cont.innerHTML=`<div class="card" style="padding:10px 14px">
+    <div style="display:flex;justify-content:space-between;margin-bottom:10px">
+      <div style="font-weight:600">${fmtDate(date)}</div>
+      <div style="font-size:12px">আয় <span class="green">${fmt(inc)}</span> · খরচ <span class="red">${fmt(exp)}</span></div>
+    </div>
+    ${es.map(e=>{const p=projById(e.projId);return`<div class="entry-item">
+      <div class="entry-dot ${e.type==='income'?'dot-green':'dot-red'}">${e.type==='income'?'+':'−'}</div>
+      <div class="entry-info"><div class="entry-name">${e.label}</div><div class="entry-meta">${p?p.name:''}</div></div>
+      <div class="entry-amt ${e.type==='income'?'green':'red'}">${e.type==='income'?'+':'−'}${fmt(e.amount)} ৳</div>
+    </div>`;}).join('')}
+  </div>`;
+}
+
+// ── TASKS ─────────────────────────────────────────────────────────────────────
+function addTask(){
+  const inp=document.getElementById('taskInput');
+  const text=inp.value.trim();if(!text)return;
+  const priority=document.getElementById('taskPriority').value;
+  fsCol('tasks').add({text,priority,done:false,createdAt:Date.now()});
+  inp.value='';
+}
+function toggleTask(tid){
+  const t=data.tasks.find(x=>x.id===tid);if(!t)return;
+  fsCol('tasks').doc(tid).update({done:!t.done});
+}
+function deleteTask(tid){fsCol('tasks').doc(tid).delete();}
+function renderTasks(){
+  const cont=document.getElementById('tasksList');
+  if(!data.tasks.length){cont.innerHTML='<div class="empty" style="padding:12px"><i class="ti ti-checklist"></i>কোনো কাজ নেই</div>';return;}
+  const sorted=[...data.tasks].sort((a,b)=>{
+    if(a.done!==b.done)return a.done?1:-1;
+    if(a.priority!==b.priority)return a.priority==='high'?-1:1;
+    return b.createdAt-a.createdAt;
+  });
+  cont.innerHTML=sorted.map(task=>`
+    <div class="task-item">
+      <div class="task-check ${task.done?'done':''}" onclick="toggleTask('${task.id}')">
+        ${task.done?'<i class="ti ti-check" style="font-size:12px"></i>':''}
+      </div>
+      <div style="flex:1">
+        <div class="task-text ${task.done?'done':''}">${task.text}</div>
+        ${task.priority==='high'&&!task.done?'<span style="font-size:10px;color:var(--red);font-weight:600">🔴 জরুরি</span>':''}
+      </div>
+      <button class="entry-del" onclick="deleteTask('${task.id}')"><i class="ti ti-trash" style="font-size:12px"></i></button>
+    </div>`).join('');
+}
+
+// ── MODAL ─────────────────────────────────────────────────────────────────────
+function closeModal(e){if(e.target===document.getElementById('modalOverlay'))closeModalDirect();}
+function closeModalDirect(){document.getElementById('modalOverlay').classList.add('hidden');}
+
+document.addEventListener('visibilitychange',()=>{if(!document.hidden)checkAndNotify();});
+
+// PWA: সার্ভিস ওয়ার্কার রেজিস্টার (অফলাইনে অ্যাপ-শেল লোড হওয়া নিশ্চিত করে)
+if('serviceWorker' in navigator){
+  window.addEventListener('load',()=>{
+    navigator.serviceWorker.register('sw.js').catch(err=>console.warn('Service worker registration failed:',err));
+  });
+}
+
+// ── INIT ──────────────────────────────────────────────────────────────────────
+// অ্যাপ বুট হয় auth.onAuthStateChanged() থেকে (উপরে) — লগইন করা থাকলে ফার্ম রিজলভ হয়ে
+// attachFarmListeners() রিয়েল-টাইম Firestore listener চালু করে, প্রথম রেন্ডার হয় showNav('home') দিয়ে।
+document.getElementById('topDate').textContent=new Date().toLocaleDateString('bn-BD',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
+renderHome();
+</script>
+</body>
+</html>

@@ -1,0 +1,15 @@
+{
+  "name": "পোল্ট্রি ট্র্যাকার",
+  "short_name": "পোল্ট্রি",
+  "description": "পোল্ট্রি ফার্মের আয়-ব্যয়, পাখি, ফিড, ভ্যাকসিন হিসাব",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0f0f14",
+  "theme_color": "#7c3aed",
+  "icons": [
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
+}

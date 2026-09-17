@@ -1,0 +1,29 @@
+name: Deploy to Firebase Hosting
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: চেকআউট
+        uses: actions/checkout@v4
+
+      - name: public ফোল্ডার তৈরি করে ফাইলগুলো কপি করা
+        run: |
+          mkdir -p public
+          cp poultry_cloud.html public/index.html
+          cp manifest.json public/manifest.json
+          cp sw.js public/sw.js
+          cp icons/icon-192.png public/icon-192.png
+          cp icons/icon-512.png public/icon-512.png
+
+      - name: Firebase Hosting-এ ডিপ্লয়
+        uses: FirebaseExtended/action-hosting-deploy@v0
+        with:
+          repoToken: '${{ secrets.GITHUB_TOKEN }}'
+          firebaseServiceAccount: '${{ secrets.FIREBASE_SERVICE_ACCOUNT }}'
+          channelId: live
+          projectId: your-firebase-project-id
