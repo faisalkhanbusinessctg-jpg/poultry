@@ -15,10 +15,11 @@ jobs:
         run: |
           mkdir -p public
           cp poultry_cloud.html public/index.html
-          cp manifest.json public/manifest.json
-          cp sw.js public/sw.js
-          cp icons/icon-192.png public/icon-192.png
-          cp icons/icon-512.png public/icon-512.png
+          [ -f manifest.json ] && cp manifest.json public/manifest.json || echo "manifest.json নেই, skip"
+          [ -f sw.js ] && cp sw.js public/sw.js || echo "sw.js নেই, skip"
+          [ -f icons/icon-192.png ] && cp icons/icon-192.png public/icon-192.png || echo "icon-192.png নেই, skip"
+          [ -f icons/icon-512.png ] && cp icons/icon-512.png public/icon-512.png || echo "icon-512.png নেই, skip"
+          ls -la public
 
       - name: Firebase Hosting-এ ডিপ্লয়
         uses: FirebaseExtended/action-hosting-deploy@v0
@@ -26,4 +27,4 @@ jobs:
           repoToken: '${{ secrets.GITHUB_TOKEN }}'
           firebaseServiceAccount: '${{ secrets.FIREBASE_SERVICE_ACCOUNT }}'
           channelId: live
-          projectId: your-firebase-project-id
+          projectId: egg-farmimg
