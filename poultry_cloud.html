@@ -11,9 +11,13 @@
 <meta name="apple-mobile-web-app-title" content="পোল্ট্রি"/>
 <link rel="apple-touch-icon" href="icon-192.png"/>
 <link rel="icon" href="icon-192.png"/>
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.44.0/tabler-icons.min.css"/>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<link rel="preconnect" href="https://www.gstatic.com" crossorigin/>
+<link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin/>
+<link rel="preconnect" href="https://firestore.googleapis.com" crossorigin/>
+<link rel="dns-prefetch" href="https://identitytoolkit.googleapis.com"/>
+<link rel="dns-prefetch" href="https://securetoken.googleapis.com"/>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.44.0/tabler-icons.min.css" media="print" onload="this.media='all'"/>
+<noscript><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.44.0/tabler-icons.min.css"/></noscript>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
@@ -646,27 +650,66 @@ auth.onAuthStateChanged(user=>{
   resolveFarms();
 });
 
+// ফার্মের তালিকা সার্ভার থেকে আনে (সব কোয়েরি parallel)
+async function fetchFarms(){
+  const[ownedSnap,memberSnap]=await Promise.all([
+    db.collection('farms').where('ownerId','==',currentUser.uid).get(),
+    db.collection('farmMemberships').where('email','==',currentUser.email).get()
+  ]);
+  const farms=ownedSnap.docs.map(d=>({id:d.id,...d.data(),role:'owner'}));
+  const extra=memberSnap.docs.map(m=>m.data()).filter(md=>!farms.find(f=>f.id===md.farmId));
+  const fdocs=await Promise.all(extra.map(md=>db.collection('farms').doc(md.farmId).get().then(fd=>({fd,md}))));
+  fdocs.forEach(({fd,md})=>{
+    if(fd.exists&&!farms.find(f=>f.id===fd.id))farms.push({id:fd.id,...fd.data(),role:'admin',permissions:md.permissions||{}});
+  });
+  return farms;
+}
+// লোকাল ক্যাশ: পরের বার অ্যাপ খুললে নেটওয়ার্কের জন্য অপেক্ষা না করে সরাসরি ফার্ম খোলে
+function readFarmsCache(uid){
+  try{return JSON.parse(localStorage.getItem('pltry_farmsCache_'+uid)||'null');}catch(e){return null;}
+}
+function saveFarmsCache(uid,farms){
+  try{
+    localStorage.setItem('pltry_farmsCache_'+uid,JSON.stringify(farms.map(f=>({
+      id:f.id,name:f.name||'',ownerId:f.ownerId||'',role:f.role,
+      permissions:f.permissions||{},categories:f.categories||[]
+    }))));
+  }catch(e){}
+}
+function routeFarms(farms){
+  myFarms=farms;
+  if(!farms.length){showOnboardingScreen();return;}
+  if(farms.length===1)return selectFarm(farms[0]);
+  const lastId=localStorage.getItem('pltry_lastFarm');
+  const remembered=farms.find(f=>f.id===lastId);
+  if(remembered)return selectFarm(remembered);
+  showInitialFarmPicker();
+}
 async function resolveFarms(){
+  const uid=currentUser.uid;
+  const lastId=localStorage.getItem('pltry_lastFarm');
+  const cached=readFarmsCache(uid);
+  const hit=(cached&&lastId)?cached.find(f=>f.id===lastId):null;
+  if(hit){
+    // দ্রুত পথ: ক্যাশ থেকে এখনই ফার্ম খোলো, ব্যাকগ্রাউন্ডে সার্ভারের সাথে মিলিয়ে নাও
+    myFarms=cached;
+    selectFarm(hit);
+    fetchFarms().then(farms=>{
+      saveFarmsCache(uid,farms);
+      myFarms=farms;
+      const cur=farms.find(f=>f.id===currentFarmId);
+      if(!cur){detachFarmListeners();currentFarmId=null;routeFarms(farms);return;}
+      myRole=cur.role;
+      myPermissions=cur.role==='owner'?null:(cur.permissions||{});
+      applyPermissionUI();
+    }).catch(err=>console.warn('ফার্ম তালিকা আপডেট করা যায়নি:',err));
+    return;
+  }
   bootLoading('আপনার ফার্ম খোঁজা হচ্ছে...');
   try{
-    const[ownedSnap,memberSnap]=await Promise.all([
-      db.collection('farms').where('ownerId','==',currentUser.uid).get(),
-      db.collection('farmMemberships').where('email','==',currentUser.email).get()
-    ]);
-    let farms=ownedSnap.docs.map(d=>({id:d.id,...d.data(),role:'owner'}));
-    for(const m of memberSnap.docs){
-      const md=m.data();
-      if(farms.find(f=>f.id===md.farmId))continue;
-      const fd=await db.collection('farms').doc(md.farmId).get();
-      if(fd.exists)farms.push({id:fd.id,...fd.data(),role:'admin',permissions:md.permissions||{}});
-    }
-    myFarms=farms;
-    if(!farms.length){showOnboardingScreen();return;}
-    if(farms.length===1)return selectFarm(farms[0]);
-    const lastId=localStorage.getItem('pltry_lastFarm');
-    const remembered=farms.find(f=>f.id===lastId);
-    if(remembered)return selectFarm(remembered);
-    showInitialFarmPicker();
+    const farms=await fetchFarms();
+    saveFarmsCache(uid,farms);
+    routeFarms(farms);
   }catch(err){
     console.error(err);
     showBoot(`<div class="boot-card"><div style="font-size:44px;margin-bottom:14px">⚠️</div>
@@ -774,17 +817,47 @@ function updateContactDatalists(){
   if(bl)bl.innerHTML=buyers.map(n=>`<option value="${n}">`).join('');
   if(sl)sl.innerHTML=suppliers.map(n=>`<option value="${n}">`).join('');
 }
-let _firstSnapshotsPending=FARM_COLLECTIONS.length;
+let _firstSnapshotsPending=0;
+let _bootToken=0;
+let _bootDone=false;
+let _rrTimer=null;
+// একসাথে অনেক snapshot এলে বারবার render না করে একবারে করে
+function scheduleRerender(){
+  if(_rrTimer)return;
+  _rrTimer=setTimeout(()=>{_rrTimer=null;rerenderCurrentPage();},30);
+}
+// সব collection-এর প্রথম ডেটা এলে (বা ৪ সেকেন্ড পর) একবার render করে অ্যাপ দেখায়
+function finishFarmBoot(token){
+  if(token!==_bootToken||_bootDone)return;
+  _bootDone=true;
+  _firstSnapshotsPending=0;
+  document.getElementById('bootScreen').classList.add('hidden');
+  document.getElementById('appRoot').classList.remove('hidden');
+  rerenderCurrentPage();
+  (window.requestIdleCallback||setTimeout)(()=>{loadPdfLibs().catch(()=>{});},2500);
+}
 function attachFarmListeners(){
   detachFarmListeners();
+  const token=++_bootToken;
+  _bootDone=false;
+  _firstSnapshotsPending=FARM_COLLECTIONS.length;
+  const seen={};
   data={projects:[],entries:[],categories:currentFarmDoc.categories||[...DEFAULT_CATS],vaccines:[],notes:[],tasks:[],birdLogs:[],feedLogs:[],healthLogs:[],dues:[],contacts:[],activeProjectId:''};
   document.getElementById('appTitle').textContent=currentFarmDoc.name||'পোল্ট্রি ট্র্যাকার';
+  bootLoading('ডেটা লোড হচ্ছে...');
   FARM_COLLECTIONS.forEach(col=>{
+    const markFirst=()=>{
+      if(seen[col])return;
+      seen[col]=true;
+      _firstSnapshotsPending--;
+      if(_firstSnapshotsPending<=0)finishFarmBoot(token);
+    };
     const unsub=fsCol(col).onSnapshot(snap=>{
       data[col]=snap.docs.map(d=>({id:d.id,...d.data()}));
       if(col==='projects')ensureActiveProject();
-      rerenderCurrentPage();
-    },err=>console.error(col,'sync error',err));
+      if(!_bootDone){markFirst();return;}
+      scheduleRerender();
+    },err=>{console.error(col,'sync error',err);markFirst();});
     unsubscribers.push(unsub);
   });
   const unsubFarm=fsFarmDoc().onSnapshot(doc=>{
@@ -793,11 +866,10 @@ function attachFarmListeners(){
     data.categories=fd.categories&&fd.categories.length?fd.categories:[...DEFAULT_CATS];
     currentFarmDoc={...currentFarmDoc,...fd,id:currentFarmId};
     document.getElementById('appTitle').textContent=currentFarmDoc.name||'পোল্ট্রি ট্র্যাকার';
-    rerenderCurrentPage();
+    if(_bootDone)scheduleRerender();
   });
   unsubscribers.push(unsubFarm);
-  document.getElementById('bootScreen').classList.add('hidden');
-  document.getElementById('appRoot').classList.remove('hidden');
+  setTimeout(()=>finishFarmBoot(token),4000);
   document.getElementById('topDate').textContent=new Date().toLocaleDateString('bn-BD',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
   loadThemeAndLang();
   applyTheme();
@@ -2143,8 +2215,31 @@ function downloadCSV(){
   a.click();
 }
 
+// ── PDF/JPG লাইব্রেরি (html2canvas + jsPDF): পেজ লোডে নয়, দরকারে বা বুটের পরে idle সময়ে লোড হয় ──
+let _pdfLibsPromise=null;
+function _loadScript(src){
+  return new Promise((res,rej)=>{
+    const sc=document.createElement('script');
+    sc.src=src;sc.onload=res;sc.onerror=()=>rej(new Error('load failed: '+src));
+    document.head.appendChild(sc);
+  });
+}
+function loadPdfLibs(){
+  if(typeof html2canvas!=='undefined'&&window.jspdf)return Promise.resolve();
+  if(!_pdfLibsPromise){
+    _pdfLibsPromise=Promise.all([
+      _loadScript('https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js'),
+      _loadScript('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js')
+    ]).catch(e=>{_pdfLibsPromise=null;throw e;});
+  }
+  return _pdfLibsPromise;
+}
+
 // ── ডিম বিক্রির রসিদ/ইনভয়েস ──────────────────────────────────────────────────
 function downloadReceipt(eid){
+  loadPdfLibs().then(()=>_downloadReceiptImpl(eid),()=>alert('রসিদ তৈরির লাইব্রেরি লোড হয়নি। ইন্টারনেট সংযোগ পরীক্ষা করুন।'));
+}
+function _downloadReceiptImpl(eid){
   const e=data.entries.find(x=>x.id===eid);
   if(!e){alert('এন্ট্রি খুঁজে পাওয়া যায়নি!');return;}
   if(typeof html2canvas==='undefined'){alert('রসিদ তৈরির লাইব্রেরি লোড হয়নি। ইন্টারনেট সংযোগ পরীক্ষা করুন।');return;}
@@ -2185,6 +2280,9 @@ function downloadReceipt(eid){
 }
 
 function downloadFullReport(kind){
+  loadPdfLibs().then(()=>_downloadFullReportImpl(kind),()=>alert('রিপোর্ট তৈরির লাইব্রেরি লোড হয়নি। ইন্টারনেট সংযোগ পরীক্ষা করুন।'));
+}
+function _downloadFullReportImpl(kind){
   if(typeof html2canvas==='undefined'){alert('রিপোর্ট তৈরির লাইব্রেরি লোড হয়নি। ইন্টারনেট সংযোগ পরীক্ষা করুন।');return;}
   const status=document.getElementById('reportGenStatus');
   if(status)status.textContent='রিপোর্ট তৈরি হচ্ছে...';
